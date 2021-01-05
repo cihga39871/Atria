@@ -1,0 +1,13 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+deps/deps.jl
+.Rproj.user
+.*DS_Store
+nohup.out
+bin/*
+lib*/*
+tmp*/*
+.vscode/
+app*/
+app

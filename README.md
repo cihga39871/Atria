@@ -1,7 +1,5 @@
 # Atria
 
-**Please follow [the release installation guide](docs/1.1.Release_installation_guide.md) to install Atria. Currently the repository contains the benchmark toolkit, which can be used to validate the performance of Atria. The source code will be uploaded to this repository once the Atria paper is accepted.**
-
 Atria is designed to trim adapters and low-quality bases of **pair-end** next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree.
 
 ## Contents
@@ -14,3 +12,6 @@ Atria is designed to trim adapters and low-quality bases of **pair-end** next-ge
 
 2. [Atria trimming methods and usages](docs/2.Atria_trimming_methods_and_usages.md)
 
+3. [Benchmark toolkit](docs/3.Benchmark_toolkit.md)
+
+4. [Atria development notes](docs/4.Development_notes.md)
