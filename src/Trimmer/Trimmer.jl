@@ -1,8 +1,8 @@
 
 module Trimmer
 
-export julia_wrapper_atria,
-sub_procs,
+export julia_wrapper_atria, julia_wrapper_atria_single_end,
+sub_procs, sub_procs_single_end,
 atria_markdown_help,
 processing_reads!,
 processing_reads_range!,
@@ -17,7 +17,6 @@ using ArgParse
 using BioSymbols
 using BioSequences
 using Distributed
-using TimerOutputs
 using Logging
 using JSON
 using DataStructures
@@ -32,6 +31,7 @@ using ..FqRecords
 include("args.jl")
 include("thread_trim.jl")
 include("wrapper.jl")
+include("wrapper_single_end.jl")
 include("markdown_help.jl")
 
 end

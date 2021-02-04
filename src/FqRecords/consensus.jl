@@ -49,7 +49,7 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert
         # global num_ones
         bit1 = unsafe_load(p1 + p1_offset)
         num_ambiguous_bits = count_ones(bit1) - 16
-        bit2 = unsafe_load(p2_rc + p2_rc_offset) |> N2gap
+        bit2 = N2gap(unsafe_load(p2_rc + p2_rc_offset))
         num_ones += count_ones(bit1|bit2) - num_ambiguous_bits
 
         p1_offset += 8
@@ -73,6 +73,7 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert
         a = r1_seq[r1_i]
         b = r2_seq[r2_i]
         if !((a | b) in (DNA_W, DNA_S)) # not complement
+        # if !iscomplement(a, b) # not complement
             a_prob = r1_prob[r1_i]
             b_prob = r2_prob[r2_i]
             if a_prob - b_prob > prob_diff

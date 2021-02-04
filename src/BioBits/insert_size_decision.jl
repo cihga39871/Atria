@@ -16,18 +16,19 @@
     insert_size, score
 end
 
-@inline function insert_size_decision_separate(a_insert_size::Int64, a_score::Float64, b_insert_size::Int64, b_score::Float64; insert_size_diff::Int64 = 0, score_diff::Float64 = 8.0)
+@inline function insert_size_decision_separate(a_insert_size::Int64, a_score::Float64, b_insert_size::Int64, b_score::Float64; insert_size_diff::Int64 = 0)
     if abs(a_insert_size - b_insert_size) <= insert_size_diff
         score = a_score + b_score
         # insert sizes not changed
-    elseif abs(a_score - b_score) < score_diff
-        score = (a_score + b_score) / 2
-        # choose the min insert size for both a and b
-        if a_insert_size > b_insert_size
-            a_insert_size = b_insert_size
-        else
-            b_insert_size = a_insert_size
-        end
+    # NOTE: remove the following elseif because
+    # elseif abs(a_score - b_score) < score_diff 0 <= score_diff <= 3 get the highest result.
+    #     score = (a_score + b_score) / 2
+    #     # choose the min insert size for both a and b
+    #     if a_insert_size > b_insert_size
+    #         a_insert_size = b_insert_size
+    #     else
+    #         b_insert_size = a_insert_size
+    #     end
     elseif a_score > b_score
         score = a_score
         b_insert_size = a_insert_size

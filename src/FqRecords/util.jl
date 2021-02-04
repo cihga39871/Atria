@@ -60,3 +60,17 @@ end
         BioSequences.stringbyte(A, sym) & 0x80 == 0x80 && error("Cannot encode $sym ('$(Char(sym))') in $(String(copy(src))) to $A. Is the input file valid? Does the disk have bad sections?")
     end
 end
+
+@inline function iscomplement(a::DNA, b::DNA)
+    if a === DNA_A && b === DNA_T
+        true
+    elseif a === DNA_T && b === DNA_A
+        true
+    elseif a === DNA_C && b === DNA_G
+        true
+    elseif a === DNA_G && b === DNA_C
+        true
+    else
+        false
+    end
+end

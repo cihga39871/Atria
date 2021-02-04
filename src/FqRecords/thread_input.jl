@@ -88,6 +88,75 @@ function load_fqs_threads!(
     return n_r1, n_r2, r1s, r2s, ncopyed
 end
 
+"""
+    load_fqs_threads!(
+        io1::IOStream                    ,
+        in1bytes::Vector{UInt8}          ,
+        vr1s::NTuple{N, Vector{FqRecord}},
+        r1s::Vector{FqRecord}            ;
+        remove_first_n::Int64 = 0        ,
+        quality_offset::Int64=33         ,
+        njobs = 2                        ) where N
+
+The interface to load FASTQ files. Design for `IOStream` only.
+
+Caution: `r[12]s` might be new elements, or in-place modified ones, depending on the necessity to copy.
+
+Return `n_r1, n_r2, r1s, r2s, ncopyed`.
+"""
+function load_fqs_threads!(
+    io1::IOStream                    ,
+    in1bytes::Vector{UInt8}          ,
+    vr1s::NTuple{N, Vector{FqRecord}},
+    r1s::Vector{FqRecord}            ;
+    remove_first_n::Int64 = 0        ,
+    quality_offset::Int64=33         ,
+    njobs = 2                        ) where N
+
+    #== IMPORTANT :: Shared elements conflicts in vrs and rs ::
+
+    Currently, vrs and rs share elements (because of append! in append_loop! in load_fqs_threads!).
+    So, in the next run, when modifying vrs, the elements in rs will change.
+    It is not a problem if rs are all processed, but when some rs remain,
+    it will cause a huge shared data conflict!
+    Solution: replace the rs with a new one if rs is not all processed.
+    =#
+    n_r1 = length(r1s)
+    ncopyed = 0
+    @inbounds if remove_first_n != n_r1  # r1 has some remaining
+        if eof(io1)
+            # exception: no modification will be done in vr1s, so r1s will not change.
+            n_remove_r1 = remove_first_n
+        else
+            r1s = map(copy, view(r1s, remove_first_n + 1 : n_r1))
+            ncopyed = length(r1s)
+            # and do not remove in append_loop!
+            n_remove_r1 = 0
+        end
+    else
+        n_remove_r1 = remove_first_n
+    end
+
+
+    ## real thing starts
+    njobs < 1 && (njobs = 1)
+
+    idx_fq1_starts, idx_fq1_stops = read_chunks!(io1, in1bytes, njobs)
+
+    tasks = Task[]
+    @inbounds for i in 1:length(idx_fq1_starts)
+        i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
+        push!(tasks, i_task)
+    end
+
+    vr1s_stops = map(fetch, tasks)
+    n_r1 = append_loop!(r1s, vr1s, vr1s_stops; remove_first_n=n_remove_r1)
+
+    (n_r1 == 0) && throw(error("Read nothing from R1!"))
+
+    return n_r1, r1s, ncopyed
+end
+
 
 """
     load_fqs_threads!(
@@ -156,17 +225,17 @@ function load_fqs_threads!(
     ## real thing starts
     njobs < 1 && (njobs = 1)
 
-    if nthreads() < 3
+    if nthreads() < 2
         # read r1 and r2 one by one
         idx_fq1_starts, idx_fq1_stops, in1bytes, in1bytes_nremain = read_chunks!(io1, in1bytes, in1bytes_nremain, njobs; will_eof = will_eof1, resize_before_read = in1bytes_resize_before_read)
     else
-        # read r1 and r2 at the same time, because pigz IO is slow and only uses 180% CPU.
+        # read r1 and r2 at the same time
         task_read1 = Threads.@spawn read_chunks!(io1, in1bytes, in1bytes_nremain, njobs; will_eof = will_eof1, resize_before_read = in1bytes_resize_before_read)
     end
 
     task_read2 = Threads.@spawn read_chunks!(io2, in2bytes, in2bytes_nremain, njobs, will_eof = will_eof2, resize_before_read = in2bytes_resize_before_read)
 
-    if nthreads() < 3
+    if nthreads() < 2
         # r1 has been done
         nothing
     else
@@ -198,6 +267,76 @@ function load_fqs_threads!(
 end
 
 
+"""
+    load_fqs_threads!(
+        io1::IO                       ,
+        in1bytes::Vector{UInt8}       ,
+        in1bytes_nremain::Integer     ,
+        vr1s::NTuple{N, Vector{FqRecord}},
+        r1s::Vector{FqRecord}         ;
+        will_eof1::Bool = true        ,
+        remove_first_n::Int64 = 0     ,
+        njobs = 2                     ) where N
+
+The interface to load FASTQ files. Design for general `IO` that does not support seeking.
+
+Caution: `r[12]s` might be new elements, or in-place modified ones, depending on the necessity to copy.
+
+Return `n_r1, n_r2, r1s, r2s, in1bytes_nremain, in2bytes_nremain, ncopyed`.
+"""
+function load_fqs_threads!(
+    io1::IO                       ,
+    in1bytes::Vector{UInt8}       ,
+    in1bytes_nremain::Integer     ,
+    vr1s::NTuple{N, Vector{FqRecord}},
+    r1s::Vector{FqRecord}         ;
+    will_eof1::Bool = true        ,
+    remove_first_n::Int64 = 0     ,
+    njobs = 2                     ) where N
+
+    #== IMPORTANT :: Shared elements conflicts in vrs and rs ::
+
+    Currently, vrs and rs share elements (because of append! in append_loop! in load_fqs_threads!).
+    So, in the next run, when modifying vrs, the element in rs will change.
+    It is not a problem if rs is all processed, but when some rs remains,
+    it will cause a huge shared data conflict!
+    Solution: replace the rs with a new one if rs is not all processed.
+    =#
+    n_r1 = length(r1s)
+    ncopyed = 0
+    @inbounds if remove_first_n != n_r1  # r1 has some remaining
+        if eof(io1)
+            # exception: no modification will be done in vr1s, so r1s will not change.
+            n_remove_r1 = remove_first_n
+        else
+            r1s = map(copy, view(r1s, remove_first_n + 1 : n_r1))
+            ncopyed = length(r1s)
+            # and do not remove in append_loop!
+            n_remove_r1 = 0
+        end
+    else
+        n_remove_r1 = remove_first_n
+    end
+
+    ## real thing starts
+    njobs < 1 && (njobs = 1)
+
+    idx_fq1_starts, idx_fq1_stops, in1bytes, in1bytes_nremain = read_chunks!(io1, in1bytes, in1bytes_nremain, njobs; will_eof = will_eof1)
+
+    tasks = Task[]
+    @inbounds for i in 1:length(idx_fq1_starts)
+        i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1)
+        push!(tasks, i_task)
+    end
+
+    vr1s_stops = map(fetch, tasks)
+    n_r1 = append_loop!(r1s, vr1s, vr1s_stops; remove_first_n=n_remove_r1)
+
+    (n_r1 == 0) && throw(error("Read nothing from R1!"))
+
+    return n_r1, r1s, in1bytes_nremain, ncopyed
+end
+
 
 """
     check_filesize(file::String)
@@ -227,7 +366,13 @@ else
             return (filesize(file), false)
         else
             try
-                return (parse(Int, size_match.captures[1]), true)
+                gziped_file_size = parse(Int, size_match.captures[1])
+                if gziped_file_size == 0
+                    # happens when use non standard compression program, such as fastp
+                    return (filesize(file), false)
+                else
+                    return (gziped_file_size, true)
+                end
             catch
                 return (filesize(file), false)
             end
@@ -750,3 +895,68 @@ Return number of reads in `rs` are valid.
     end
     i_read
 end
+
+# """
+#     StringChunk2FqRecord!(rs::Vector{FqRecord}, inbytes::Vector{UInt8}, idx_fq_start::UInt64, idx_fq_end::UInt64; remove_first_n::Int64=0, quality_offset::Int64=33)
+#
+# - `rs`: it will be replaced by new FqRecords in place.
+#
+# - `inbytes`: the chunk of raw bytes. Only analyze `inbytes[idx_fq_start:idx_fq_end]`.
+#
+# - `remove_first_n`: remove the first N elements of `rs`. `0` = no remove; `-1` = remove all (inline replace); `>0` = deleteat! the first N elements. In reality, those are not removed, but copied from index from `remove_first_n+1`
+#
+# Return number of reads in `rs` are valid.
+# """
+# @inline function StringChunk2FqRecord!(rs::Vector{FqRecord}, inbytes::Vector{UInt8}, idx_fq_start::UInt64, idx_fq_end::UInt64; remove_first_n::Int64=0, quality_offset::Int64=33)::Int64
+#
+#     if remove_first_n == 0
+#         i_read = n_read = length(rs)
+#     elseif remove_first_n == -1
+#         i_read = 0
+#         n_read = length(rs)
+#     else
+#         deleteat!(rs, 1:remove_first_n)
+#         i_read = n_read = length(rs)
+#
+#         n_read = length(rs)
+#         i_copy_from = remove_first_n
+#         i_copy_to = 0
+#         @inbounds while i_copy_from < n_read
+#             i_copy_from += 1
+#             i_copy_to += 1
+#             safe_copyto!(rs[i_copy_to], rs[i_copy_from])
+#         end
+#         i_read = i_copy_to
+#     end
+#
+#     while idx_fq_start <= idx_fq_end
+#         i_read += 1
+#         # @info "test" i_read idx_fq_start
+#         idx_id_start = idx_fq_start
+#         idx_seq_start, n_id = index_next_line_and_n_this_line(inbytes, idx_id_start, idx_fq_end)
+#         idx_des_start, n_seq = index_next_line_and_n_this_line(inbytes, idx_seq_start, idx_fq_end)
+#         idx_qual_start, n_des = index_next_line_and_n_this_line(inbytes, idx_des_start, idx_fq_end)
+#         idx_fq_start, n_qual = index_next_line_and_n_this_line(inbytes, idx_qual_start, idx_fq_end)
+#         if i_read <= n_read
+#             # TODO: rs_i_read = rs[i_read]
+#             r = @inbounds rs[i_read]
+#             safe_copyto!(r.id, inbytes, idx_id_start, n_id)
+#             safe_copyto!(r.seq, inbytes, idx_seq_start, n_seq)
+#             bitsafe!(r.seq)
+#             safe_copyto!(r.des, inbytes, idx_des_start, n_des)
+#             safe_copyto!(r.qual, inbytes, idx_qual_start, n_qual)
+#             update_prob_from_qual(r, quality_offset=quality_offset)
+#         else
+#             id = @inbounds inbytes[idx_id_start:(idx_id_start + n_id - 1)]
+#             des = @inbounds inbytes[idx_des_start:(idx_des_start + n_des - 1)]
+#             qual = @inbounds inbytes[idx_qual_start:(idx_qual_start + n_qual - 1)]
+#
+#             seq = LongDNASeq(n_seq)
+#             safe_copyto!(seq, inbytes, idx_seq_start, n_seq)
+#
+#             i_fq = FqRecord(id, seq, des, qual, quality_offset=quality_offset)
+#             push!(rs, i_fq)
+#         end
+#     end
+#     i_read
+# end

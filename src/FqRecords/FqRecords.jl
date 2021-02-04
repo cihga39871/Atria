@@ -14,6 +14,7 @@ fqreadrecord!,
 fqwriterecord,
 check_identifier,
 throw_identifier_error,
+iscomplement,
 load_fqs_threads!,
 read_chunks!,
 StringChunk2FqRecord!,
@@ -28,6 +29,8 @@ front_trim!,
 tail_trim!,
 tail_N_trim!,
 qualitymatch,
+seq_complexity,
+polyX_tail_scan,
 pe_consensus!
 
 

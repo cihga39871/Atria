@@ -19,9 +19,15 @@ function check_compatibility()
     end
 
     try
-        run(`pigz --version`)
+        run(pipeline(`pigz --version`, stderr=devnull))
     catch
-        error("Dependency: pigz is not installed or found in PATH.")
+        error("Dependency missing: pigz not found.")
+        exit()
+    end
+    try
+        run(pipeline(`pbzip2 --version`, stderr=devnull))
+    catch
+        error("Dependency missing: pbzip2 not found.")
         exit()
     end
 

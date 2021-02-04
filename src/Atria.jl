@@ -50,7 +50,12 @@ function julia_main()
         if ARGS[1] in ["prog", "p"]
             println(help_programs)
         elseif ARGS[1] in ("atria", "Atria")
-            julia_wrapper_atria(ARGS[2:end]::Vector{String})
+            if "-R" in ARGS || "--read2" in ARGS
+                # paired-end
+                julia_wrapper_atria(ARGS[2:end]::Vector{String})
+            else
+                julia_wrapper_atria_single_end(ARGS[2:end]::Vector{String})
+            end
         elseif ARGS[1] == "simulate"
             julia_wrapper_simulate(ARGS[2:end]::Vector{String})
         elseif ARGS[1] == "randtrim"
@@ -62,7 +67,12 @@ function julia_main()
         elseif ARGS[1] == "test"
             test_atria()
         else
-            julia_wrapper_atria(ARGS::Vector{String})
+            if "-R" in ARGS || "--read2" in ARGS
+                # paired-end
+                julia_wrapper_atria(ARGS::Vector{String})
+            else
+                julia_wrapper_atria_single_end(ARGS::Vector{String})
+            end
         end
     else
         atria_markdown_help()

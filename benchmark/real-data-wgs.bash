@@ -8,16 +8,16 @@ r1=SRR7243169_1.fastq
 r2=SRR7243169_2.fastq
 a1=CTGTCTCTTATACACATCT
 a2=CTGTCTCTTATACACATCT
-bwa_ref=genomes/Pseudomonas.sp.Z003-0.4C.fasta
+bwa_ref=`pwd`/genomes/Pseudomonas.sp.Z003-0.4C.fasta
 
 # download reference
 mkdir genomes
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/104/975/GCF_900104975.1_IMG-taxon_2675902959_annotated_assembly/GCF_900104975.1_IMG-taxon_2675902959_annotated_assembly_genomic.fna.gz -O $bwa_ref.gz
-gzip -d $bwa_ref.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/104/975/GCF_900104975.1_IMG-taxon_2675902959_annotated_assembly/GCF_900104975.1_IMG-taxon_2675902959_annotated_assembly_genomic.fna -O $bwa_ref
+gzip -d $bwa_ref
 
 # build reference
 bwa index $bwa_ref
-bowtie2-build -f $bwa_ref $bwa_ref-bowtie2
+# bowtie2-build -f $bwa_ref $bwa_ref-bowtie2
 
 
 ##### Pipelines
@@ -37,78 +37,88 @@ run_trim_galore 4 2>> stderr.log
 
 run_trimmomatic 4 2>> stderr.log
 
+run_ktrim 4 2>> stderr.log
 
-# quality trimming
+run_fastp 8 2>> stderr.log
+
+run_seqpurge 8 2>> stderr.log
+pigz -d SeqPurge/*gz
+
+run_atropos  8 2>> stderr.log
+
+
+# mapping without qualtrim
+mkdir -p trimmed
+ln -s ../AdapterRemoval-3/adapterremoval.pair1.truncated trimmed/adapterremoval.R1.fastq
+ln -s ../AdapterRemoval-3/adapterremoval.pair2.truncated trimmed/adapterremoval.R2.fastq
+
+ln -s ../Atria/${r1/.fastq*/}.atria.fastq trimmed/atria.R1.fastq
+ln -s ../Atria/${r2/.fastq*/}.atria.fastq trimmed/atria.R2.fastq
+
+ln -s ../Atria-consensus/${r1/.fastq*/}.atria.fastq trimmed/atria-consensus.R1.fastq
+ln -s ../Atria-consensus/${r2/.fastq*/}.atria.fastq trimmed/atria-consensus.R2.fastq
+
+# ln -s ../Atria-src/${r1/.fastq*/}.atria.fastq trimmed/atria-src.R1.fastq
+# ln -s ../Atria-src/${r2/.fastq*/}.atria.fastq trimmed/atria-src.R2.fastq
+# ln -s ../Atria-consensus-src/${r1/.fastq*/}.atria.fastq trimmed/atria-consensus-src.R1.fastq
+# ln -s ../Atria-consensus-src/${r2/.fastq*/}.atria.fastq trimmed/atria-consensus-src.R2.fastq
+
+ln -s ../Skewer/Skewer-trimmed-pair1.fastq trimmed/Skewer.R1.fastq
+ln -s ../Skewer/Skewer-trimmed-pair2.fastq trimmed/Skewer.R2.fastq
+
+ln -s ../TrimGalore/${r1/.fastq*/}_val_1.fq trimmed/trimgalore.R1.fastq
+ln -s ../TrimGalore/${r2/.fastq*/}_val_2.fq trimmed/trimgalore.R2.fastq
+
+ln -s ../Trimmomatic/out-pair1.paired.fq trimmed/trimmomatic.R1.fastq
+ln -s ../Trimmomatic/out-pair2.paired.fq trimmed/trimmomatic.R2.fastq
+
+ln -s ../Ktrim/ktrim.read1.fq trimmed/ktrim.R1.fastq
+ln -s ../Ktrim/ktrim.read2.fq trimmed/ktrim.R2.fastq
+
+ln -s ../fastp/out.fastp.r1.fq trimmed/fastp.R1.fastq
+ln -s ../fastp/out.fastp.r2.fq trimmed/fastp.R2.fastq
+
+ln -sf ../SeqPurge/SRR7243169_1.fastq.seqpurge.fq trimmed/seqpurge.R1.fastq
+ln -sf ../SeqPurge/SRR7243169_2.fastq.seqpurge.fq trimmed/seqpurge.R2.fastq
+
+ln -sf ../Atropos/SRR7243169_1.fastq.atropos.fq trimmed/atropos.R1.fastq
+ln -sf ../Atropos/SRR7243169_2.fastq.atropos.fq trimmed/atropos.R2.fastq
+
+# trimmed/{atropos,fastp,ktrim,seqpurge}.R1*fastq
+for i in trimmed/*.R1.fastq
+do
+	echo $i
+	mapping $i ${i/.R1./.R2.}
+	samtools stats $i.bam > $i.bam.samtools-stats
+done 2>&1 | tee mapping.log
+
+# for r1 in trimmed/*.R1.fastq
+# do
+# 	echo $r1
+# 	mapping_bowtie2 $r1 ${r1/.R1./.R2.}
+# 	samtools stats $r1.bowtie2.bam > $r1.bam.bowtie2.samtools-stats
+# done 2>&1 | tee mapping.log
+
+cd trimmed
+pasteSamtoolsStats *samtools-stats
+cd ..
+
+# mapping after qualtrim
 QSCORE=15
-qualtrim Atria/${r1/.fastq}.atria.fastq Atria/${r2/.fastq}.atria.fastq
-qualtrim Atria-consensus/${r1/.fastq}.atria.fastq Atria-consensus/${r2/.fastq}.atria.fastq
-qualtrim AdapterRemoval-3/adapterremoval.pair1.truncated AdapterRemoval-3/adapterremoval.pair2.truncated
-qualtrim Skewer/Skewer-trimmed-pair1.fastq Skewer/Skewer-trimmed-pair2.fastq
-qualtrim TrimGalore/${r1/.fastq}_val_1.fq TrimGalore/${r2/.fastq}_val_2.fq
-qualtrim Trimmomatic/out-pair1.paired.fq Trimmomatic/out-pair2.paired.fq
+time atria -r trimmed/*.R1.fastq -R trimmed/*.R2.fastq -t 5 -p 6 -o trimmed-qualtrim --no-tail-n-trim --max-n=-1 --no-adapter-trim --no-length-filtration --quality-score $QSCORE
+rename --force "s/atria.fastq/qual$QSCORE.fastq/" trimmed-qualtrim/*fastq
 
-for d in */qualtrim
+# time atria -r trimmed/ktrim.R1.fastq trimmed/fastp.R1.fastq trimmed/seqpurge.R1.fastq trimmed/atropos.R1.fastq -R trimmed/ktrim.R2.fastq trimmed/fastp.R2.fastq trimmed/seqpurge.R2.fastq trimmed/atropos.R2.fastq -t 7 -p 4 -o trimmed-qualtrim --no-tail-n-trim --max-n=-1 --no-adapter-trim --no-length-filtration --quality-score $QSCORE --check-identifier
+# rename --force "s/atria.fastq/qual$QSCORE.fastq/" trimmed-qualtrim/*fastq*
+
+# trimmed-qualtrim/{atropos,fastp,ktrim,seqpurge}.R1*fastq
+for i in trimmed-qualtrim/*.R1.qual$QSCORE.fastq
 do
-	echo $d
-	if [[ `ls $d/*.qual$QSCORE.truncated | wc -l` == 2 ]]
-	then
-		ll $d/*.qual$QSCORE.truncated
-		mapping_bowtie2 $d/*.qual$QSCORE.truncated
-	elif [[ `ls $d/*.qual$QSCORE.fq | wc -l` == 2 ]]
-	then
-		ll $d/*.qual$QSCORE.fq
-		mapping_bowtie2 $d/*.qual$QSCORE.fq
-	elif [[ `ls $d/*.qual$QSCORE.fastq | wc -l` == 2 ]]
-	then
-		ll $d/*.qual$QSCORE.fastq
-		mapping_bowtie2 $d/*.qual$QSCORE.fastq
-	fi
-done
+	echo $i
+	mapping $i ${i/.R1./.R2.}
+	samtools stats $i.bam > $i.bam.samtools-stats
+done 2>&1 | tee mapping.log
 
-bowtie2stat 15
-
-
-
-for d in */qualtrim
-do
-	echo $d
-	if [[ `ls $d/*.qual$QSCORE.truncated | wc -l` == 2 ]]
-	then
-		ll $d/*.qual$QSCORE.truncated
-		mapping $d/*.qual$QSCORE.truncated
-	elif [[ `ls $d/*.qual$QSCORE.fq | wc -l` == 2 ]]
-	then
-		ll $d/*.qual$QSCORE.fq
-		mapping $d/*.qual$QSCORE.fq
-	elif [[ `ls $d/*.qual$QSCORE.fastq | wc -l` == 2 ]]
-	then
-		ll $d/*.qual$QSCORE.fastq
-		mapping $d/*.qual$QSCORE.fastq
-	fi
-done
-
-for i in */qualtrim/*bam
-do
-    echo `date` - $i
-    samtools stats $i > $i.samtools-stats
-done
-
-# pasteSamtoolsStats */qualtrim/*bam.samtools-stats
-pasteSamtoolsStats */qualtrim/*{d,q}.bam.samtools-stats */qualtrim/*bowtie2.bam.samtools-stats
-
-
-samalign(){
-	samtools view $1 | awk '{print $1"\t"$3"\t"$4"\t"$6}'
-}
-
-sampaste(){
-	paste <(samtools view $1 | awk '{print $1"\t"$3"\t"$4"\t"$6}') <(samtools view $2 | awk '{print $1"\t"$3"\t"$4"\t"$6}') | less -SN
-}
-
-akadiff(){
-	diff <(samalign Atria-src/qualtrim/SRR7243169_1.removeN.atria.qual15.fastq.bowtie2.sort.bam) <(samalign Skewer/qualtrim/Skewer-trimmed-pair1.qual15.fastq.bowtie2.sort.bam) -y | less
-}
-
-# samsort AdapterRemoval-3/qualtrim/adapterremoval.pair1.qual15.truncated.bowtie2.bam
-# samsort Atria-src/qualtrim/SRR7243169_1.removeN.atria.qual15.fastq.bowtie2.bam
-# samsort Skewer/qualtrim/Skewer-trimmed-pair1.qual15.fastq.bowtie2.bam
+cd trimmed-qualtrim
+pasteSamtoolsStats *samtools-stats
+cd ..

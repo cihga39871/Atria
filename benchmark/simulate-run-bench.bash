@@ -13,103 +13,231 @@ mkdir $replicate
 cd $replicate
 
 
-../ART/art_illumina_dir/src/art_illumina --paired --in ../genomes/TAIR10.1.fasta --out TAIR10.sim_ --len 200 --fcov 20 --mflen 250 --sdev 80 -1 $profile1 -2 $profile2
+parallel -j 15 ../ART/art_illumina_dir/src/art_illumina --paired --in ../genomes/TAIR10.1.fasta --len 200 --fcov 5 --mflen 250 --sdev 80 -1 $profile1 -2 $profile2 --out ::: TAIR10.sim{1..15}_
+
+aln2len(){
+    # aln2len.pl is too slow. this function replaces it.
+    nheader_lines=`grep -n "##Header End" $1 | sed 's/:.*//'`
+    awk "NR>$nheader_lines" $1 | paste - - -  | awk '{sub(/\/.*/, "", $2); print $2"\t"length($5)}' > $1.length.tab
+}
+export -f aln2len
+parallel -j 30 aln2len ::: *aln
+
+
+# get length stats
+cat TAIR10.sim[1-9]*_1.aln.length.tab > TAIR10.sim_1.length.tab
+cat TAIR10.sim[1-9]*_2.aln.length.tab > TAIR10.sim_2.length.tab
+
+# AdapterRemoval only support reading ATCGN, no other ambiguous reads
+awk '{if (NR%4==2) { gsub("[^ACTGN]", "N") ; print} else {print}}' TAIR10.sim[1-9]*_1.fq > TAIR10.sim_1.fq
+awk '{if (NR%4==2) { gsub("[^ACTGN]", "N") ; print} else {print}}' TAIR10.sim[1-9]*_2.fq > TAIR10.sim_2.fq
+
+rm TAIR10.sim[1-9]*
+
+# benchmark starts
 
 r1=TAIR10.sim_1.fq
 r2=TAIR10.sim_2.fq
 a1=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
 a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
 
-# fix a bug of art_illumina: somethimes generating 0x00 in sequences.
-# tr -s '\000' 'N' < $r1 > $r1.without_null
-# tr -s '\000' 'N' < $r2 > $r2.without_null
-#
-# mv $r1.without_null $r1
-# mv $r2.without_null $r2
-
-# AdapterRemoval only support reading ATCGN, no other ambiguous reads
-awk '{if (NR%4==2) { gsub("[^ACTGN]", "N") ; print} else {print}}' TAIR10.sim_1.fq > TAIR10.sim_1.fq.a
-awk '{if (NR%4==2) { gsub("[^ACTGN]", "N") ; print} else {print}}' TAIR10.sim_2.fq > TAIR10.sim_2.fq.a
-
-mv $r1.a $r1
-mv $r2.a $r2
-
-# get length stats
-$atria/benchmark/aln2len.pl TAIR10.sim_1.aln > TAIR10.sim_1.length.tab
-$atria/benchmark/aln2len.pl TAIR10.sim_2.aln > TAIR10.sim_2.length.tab
-
-rm TAIR10.sim_1.aln TAIR10.sim_2.aln
-
 . $atria/benchmark/trimming-functions.bash
 
 
 #### benchmark
-
-
 rm -f stderr.log
 
+run_atria 1 2> stderr.atria.log
+run_atria 2 2>> stderr.atria.log
+run_atria 4 2>> stderr.atria.log
+run_atria 8 2>> stderr.atria.log
+run_atria 16 2>> stderr.atria.log
+run_atria 32 2>> stderr.atria.log
 
-run_atria 1 2>> stderr.log
-run_atria 2 2>> stderr.log
-run_atria 4 2>> stderr.log
-
-$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atria/TAIR10.sim_1.atria.fq Atria/TAIR10.sim_2.atria.fq TAIR10.sim_2.length.tab > summary.Atria
-pigz Atria/*
-
-
-
-run_atria_consensus 1 2>> stderr.log
-run_atria_consensus 2 2>> stderr.log
-run_atria_consensus 4 2>> stderr.log
-
-$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atria-consensus/TAIR10.sim_1.atria.fq Atria-consensus/TAIR10.sim_2.atria.fq TAIR10.sim_2.length.tab > summary.Atria-consensus
-pigz Atria-consensus/*
-
-
+run_atria_consensus 1 2>> stderr.atria.log
+run_atria_consensus 2 2>> stderr.atria.log
+run_atria_consensus 4 2>> stderr.atria.log
+run_atria_consensus 8 2>> stderr.atria.log
+run_atria_consensus 16 2>> stderr.atria.log
+run_atria_consensus 32 2>> stderr.atria.log
 
 run_adapterremoval 1 2>> stderr.log
 run_adapterremoval 2 2>> stderr.log
 run_adapterremoval 4 2>> stderr.log
-
-$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab AdapterRemoval-3/adapterremoval.pair1.truncated AdapterRemoval-3/adapterremoval.pair2.truncated TAIR10.sim_2.length.tab > summary.AdapterRemoval
-pigz AdapterRemoval-3/*
-
-
+run_adapterremoval 8 2>> stderr.log
+run_adapterremoval 16 2>> stderr.log
+run_adapterremoval 32 2>> stderr.log
 
 run_skewer 1 2>> stderr.log
 run_skewer 2 2>> stderr.log
 run_skewer 4 2>> stderr.log
-
-$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Skewer/Skewer-trimmed-pair1.fastq Skewer/Skewer-trimmed-pair2.fastq TAIR10.sim_2.length.tab > summary.Skewer
-pigz Skewer/*
-
-
+run_skewer 8 2>> stderr.log
+run_skewer 16 2>> stderr.log
+run_skewer 32 2>> stderr.log
 
 run_trim_galore 1 2>> stderr.log
 run_trim_galore 2 2>> stderr.log
 run_trim_galore 4 2>> stderr.log
-
-$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab TrimGalore/TAIR10.sim_1_val_1.fq TrimGalore/TAIR10.sim_2_val_2.fq TAIR10.sim_2.length.tab > summary.TrimGalore
-pigz TrimGalore/*
-
-
+run_trim_galore 8 2>> stderr.log
+run_trim_galore 16 2>> stderr.log
+run_trim_galore 32 2>> stderr.log
 
 run_trimmomatic 1 2>> stderr.log
 run_trimmomatic 2 2>> stderr.log
 run_trimmomatic 4 2>> stderr.log
+run_trimmomatic 8 2>> stderr.log
+run_trimmomatic 16 2>> stderr.log
+run_trimmomatic 32 2>> stderr.log
 
-$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Trimmomatic/out-pair1.paired.fq Trimmomatic/out-pair2.paired.fq TAIR10.sim_2.length.tab > summary.Trimmomatic
-pigz Trimmomatic/*
+run_ktrim 1 2> stderr.log
+run_ktrim 2 2>> stderr.log
+run_ktrim 4 2>> stderr.log
+run_ktrim 8 2>> stderr.log
+run_ktrim 16 2>> stderr.log
+run_ktrim 32 2>> stderr.log
+
+run_fastp 2 2> stderr.log
+run_fastp 4 2>> stderr.log
+run_fastp 8 2>> stderr.log
+run_fastp 16 2>> stderr.log
+run_fastp 1 2>> stderr.log # multi-thread fastp disorganizes read order, leading to mulfunction of evalTrimming.pl
+
+run_atropos 1 2> stderr.log
+run_atropos 2 2>> stderr.log
+run_atropos 4 2>> stderr.log
+run_atropos 8 2>> stderr.log
+run_atropos 16 2>> stderr.log
+run_atropos 32 2>> stderr.log
+
+# SeqPurge cannot output without gzip, so leave it in gzip compression test
+
+pids=
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atria/TAIR10.sim_1.atria.fq Atria/TAIR10.sim_2.atria.fq TAIR10.sim_2.length.tab > summary.Atria &
+pids[1]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atria-consensus/TAIR10.sim_1.atria.fq Atria-consensus/TAIR10.sim_2.atria.fq TAIR10.sim_2.length.tab > summary.Atria-consensus &
+pids[2]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab AdapterRemoval-3/adapterremoval.pair1.truncated AdapterRemoval-3/adapterremoval.pair2.truncated TAIR10.sim_2.length.tab > summary.AdapterRemoval &
+pids[3]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Skewer/Skewer-trimmed-pair1.fastq Skewer/Skewer-trimmed-pair2.fastq TAIR10.sim_2.length.tab > summary.Skewer &
+pids[4]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab TrimGalore/TAIR10.sim_1_val_1.fq TrimGalore/TAIR10.sim_2_val_2.fq TAIR10.sim_2.length.tab > summary.TrimGalore &
+pids[5]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Trimmomatic/out-pair1.paired.fq Trimmomatic/out-pair2.paired.fq TAIR10.sim_2.length.tab > summary.Trimmomatic &
+pids[6]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab fastp/out.fastp.r1.fq fastp/out.fastp.r2.fq TAIR10.sim_2.length.tab > summary.Fastp &
+pids[7]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Ktrim/ktrim.read1.fq Ktrim/ktrim.read2.fq TAIR10.sim_2.length.tab > summary.Ktrim &
+pids[8]=$!
+
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atropos/TAIR10.sim_1.fq.atropos.fq Atropos/TAIR10.sim_2.fq.atropos.fq TAIR10.sim_2.length.tab > summary.Atropos &
+pids[9]=$!
 
 
+for pid in ${pids[*]}
+do
+    wait $pid
+done
 
-pasteTimeOutput(){
-    paste \
-        <(grep -E "Command being timed" $1 | sed 's/.*Command being timed://' ) \
-        <(grep -E "^\sUser time" $1) \
-        <(grep -E "^\sSystem time" $1) \
-        <(grep -E "^\sPercent of CPU this job got" $1) \
-        <(grep -E "^\sElapsed" $1) \
-        <(grep -E "^\sMaximum resident set size" $1)
-}
+##### time of compressed.
+pigz $r1 $r2
+rm Trimmomatic/*fq
+rm TrimGalore/*fq
+rm Skewer/*fastq
+rm AdapterRemoval-3/*truncated
+rm Ktrim/*fq
+rm fastp/*fq
+rm Atropos/*fq
+
+
+rm -f stderr.pigz.log
+
+/usr/bin/time pigz -p 8 -c Atria-consensus/*atria.fq 1>/dev/null 2>> stderr.pigz.log
+/usr/bin/time pigz -p 8 -c Atria/*atria.fq 1>/dev/null 2>> stderr.pigz.log
+
+rm Atria-consensus/*atria.fq Atria/*atria.fq
+
+r1=$r1.gz
+r2=$r2.gz
+
+/usr/bin/time pigz -cd $r1 $r2 > /dev/null 2>> stderr.pigz.log
+
+
+rm -f stderr.gz.log
+
+run_atria 1 2>> stderr.gz.log
+run_atria 2 2>> stderr.gz.log
+run_atria 4 2>> stderr.gz.log
+run_atria 8 2>> stderr.gz.log
+run_atria 16 2>> stderr.gz.log
+run_atria 32 2>> stderr.gz.log
+
+run_atria_consensus 1 2>> stderr.gz.log
+run_atria_consensus 2 2>> stderr.gz.log
+run_atria_consensus 4 2>> stderr.gz.log
+run_atria_consensus 8 2>> stderr.gz.log
+run_atria_consensus 16 2>> stderr.gz.log
+run_atria_consensus 32 2>> stderr.gz.log
+
+run_adapterremoval 1 2>> stderr.gz.log
+run_adapterremoval 2 2>> stderr.gz.log
+run_adapterremoval 4 2>> stderr.gz.log
+# run_adapterremoval 8 2>> stderr.gz.log
+# run_adapterremoval 16 2>> stderr.gz.log
+
+run_skewer 1 2>> stderr.gz.log
+run_skewer 2 2>> stderr.gz.log
+run_skewer 4 2>> stderr.gz.log
+# run_skewer 8 2>> stderr.gz.log
+# run_skewer 16 2>> stderr.gz.log
+
+run_trim_galore 1 2>> stderr.gz.log
+run_trim_galore 2 2>> stderr.gz.log
+run_trim_galore 4 2>> stderr.gz.log
+run_trim_galore 8 2>> stderr.gz.log
+run_trim_galore 16 2>> stderr.gz.log
+run_trim_galore 32 2>> stderr.gz.log
+
+run_trimmomatic 1 2>> stderr.gz.log
+run_trimmomatic 2 2>> stderr.gz.log
+run_trimmomatic 4 2>> stderr.gz.log
+# run_trimmomatic 8 2>> stderr.gz.log
+# run_trimmomatic 16 2>> stderr.gz.log
+
+
+run_seqpurge 1 2> stderr.gz.log
+
+pigz -d SeqPurge/TAIR10.sim_1.fq.seqpurge.fq.gz
+pigz -d SeqPurge/TAIR10.sim_2.fq.seqpurge.fq.gz
+$atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab SeqPurge/TAIR10.sim_1.fq.seqpurge.fq SeqPurge/TAIR10.sim_2.fq.seqpurge.fq TAIR10.sim_2.length.tab > summary.SeqPurge
+
+run_seqpurge 2 2>> stderr.gz.log
+run_seqpurge 4 2>> stderr.gz.log
+run_seqpurge 8 2>> stderr.gz.log
+run_seqpurge 16 2>> stderr.gz.log
+run_seqpurge 32 2>> stderr.gz.log
+
+run_fastp 1 2> stderr.gz.log
+run_fastp 2 2>> stderr.gz.log
+run_fastp 4 2>> stderr.gz.log
+
+run_atropos 1 2> stderr.gz.log
+run_atropos 2 2>> stderr.gz.log
+run_atropos 4 2>> stderr.gz.log
+
+##### stat
 pasteTimeOutput stderr.log > time_benchmark.txt
+pasteTimeOutput stderr.gz.log > time_benchmark_gz.txt
+
+NUM_BASES=`grep "read pairs processed" Skewer/Skewer-trimmed.log | awk '{print $1*400}'`
+$atria/benchmark/time_stats.jl time_benchmark.txt $NUM_BASES > time_benchmark.df.txt
+$atria/benchmark/time_stats.jl time_benchmark_gz.txt $NUM_BASES stderr.pigz.log > time_benchmark_gz.df.txt
+
+$atria/benchmark/time_stats_plot.R -i stats.time_benchmark.df.txt stats.time_benchmark_gz.df.txt

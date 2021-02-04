@@ -26,29 +26,53 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
     add_arg_group!(settings, "input/output: input read 1 and read 2 should be in the same order")
     @add_arg_table! settings begin
         "--read1", "-r"
-            help = "input read 1 fastq file(s) (if unix & gzip, require `pigz` in environment)"
+            help = "input read 1 fastq file(s), or single-end fastq files"
             nargs = '+'
             metavar = "R1-FASTQ"
             required = true
         "--read2", "-R"
             help = "input read 2 fastq file(s) (paired with R1-FASTQ)"
-            nargs = '+'
+            nargs = '*'
             metavar = "R2-FASTQ"
-            required = true
         "--output-dir", "-o"
             help = "store output files and stats to PATH"
             metavar = "PATH"
             default = pwd()
-        "--gzip", "-g"
-            help = "gzip the output fastq files (if unix & gzip, require `pigz` in environment)"
-            metavar = "AUTO|YES|NO"
+        "--compress", "-g"
+            help = "compression methods for output files (AUTO: same as input, NO: no compression, GZ|GZIP: gzip with `pigz`, BZ2|BZIP2: bzip2 with `pbzip2`)"
+            metavar = "AUTO|NO|GZ|GZIP|BZ2|BZIP2"
             default = "AUTO"
         "--check-identifier"
             help = "check whether the identifiers of r1 and r2 are the same"
             action = :store_true
     end
 
-    add_arg_group!(settings, "adapter trimming")
+    add_arg_group!(settings, "poly X tail trimming")
+    @add_arg_table! settings begin
+        "--polyG"
+            help = "enable trimming poly G tails"
+            action = :store_true
+        "--polyT"
+            help = "enable trimming poly T tails"
+            action = :store_true
+        "--polyA"
+            help = "enable trimming poly A tails"
+            action = :store_true
+        "--polyC"
+            help = "enable trimming poly C tails"
+            action = :store_true
+        "--poly-length"
+            help = "the minimin length of poly X"
+            default = 10
+            arg_type = Int64
+        "--poly-mismatch-per-16mer"
+            help = "the number of mismatch allowed in 16 mer poly X"
+            default = 2
+            metavar = "INT"
+            arg_type = Int64
+    end
+
+    add_arg_group!(settings, "adapter trimming (after polyX trimming)")
     @add_arg_table! settings begin
         "--no-adapter-trim"
             help = "disable adapter and pair-end trimming"
@@ -67,36 +91,46 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
             metavar = "INT"
             arg_type = Int64
         "--pe-adapter-diff", "-d"
-            help = "number of bases allowed when disconcordance found between adapter and pair-end search"
+            help = "(FOR PAIRED END) number of bases allowed when disconcordance found between adapter and pair-end search"
             default = 0
             metavar = "INT"
             arg_type = Int64
         "--r1-r2-diff", "-D"
-            help = "number of bases allowed when the insert sizes of r1 and r2 are different"
-            default = 0
+            help = "(FOR PAIRED END) number of bases allowed when the insert sizes of r1 and r2 are different"
+            default = 0 #1
             metavar = "INT"
             arg_type = Int64
-        "--r1-r2-score-diff", "-s"
-            help = "if the score difference between the 16-mers of r1 and r2 is greater than FLOAT, the insert size of the low-score read will be adapted to the high-score read"
-            default = 3.0
+        # "--r1-r2-score-diff", "-s"
+        #     help = "if the score [0-16] difference between the 16-mers of r1 and r2 is greater than FLOAT, the insert size of the low-score read will be adapted to the high-score read"
+        #     default = 3.0
+        #     metavar = "FLOAT"
+        #     arg_type = Float64
+        "--kmer-n-match", "-s"
+            help = "(FOR PAIRED END) if n base matched [0-16] is less than INT, loosen matches will be made based on the match with the highest n base match"
+            default = 9
+            metavar = "INT"
+            arg_type = Int64
+        "--trim-score-pe"
+            help = "(FOR PAIRED END) if final score [0-32] of read pair is greater than FLOAT, the reads will be trimmed."
+            default = 10.0
             metavar = "FLOAT"
             arg_type = Float64
-        "--trim-score", "-S"
-            help = "if the final score of the read pair is greater than FLOAT, the reads will be trimmed."
-            default = 8.0
+        "--trim-score-se"
+            help = "(FOR SINGLE END) if final score [0-16] of read is greater than FLOAT, the reads will be trimmed."
+            default = 10.0
             metavar = "FLOAT"
             arg_type = Float64
         "--tail-length", "-l"
-            help = "if the adapter is in the tail region, and insert size of pe match is smaller than this region, do not trim the read."
+            help = "(FOR PAIRED END) if the adapter is in the tail region, and insert size of pe match is smaller than this region, do not trim the read."
             default = 8
             metavar = "INT"
             arg_type = Int64
         "--stats"
-            help = "write stats to description lines of r2 reads."
+            help = "(DEV ONLY) write stats to description lines of r2 reads."
             action = :store_true
     end
 
-    add_arg_group!(settings, "consensus/merging in adapter trimming")
+    add_arg_group!(settings, "consensus/merging in adapter trimming (FOR PAIRED END)")
     @add_arg_table! settings begin
         "--no-consensus"
             help = "disable generating consensus paired reads. If adapter trimming is disabled, consensus calling is not performed even the flag is not set."
@@ -171,7 +205,7 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "length filter (after N trimming)")
+    add_arg_group!(settings, "length filtration (after N trimming)")
     @add_arg_table! settings begin
         "--no-length-filtration"
             help = "disable length filtration"
@@ -181,6 +215,18 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
             default = "50:500"
             metavar = "INT:INT"
             arg_type = String
+    end
+
+    add_arg_group!(settings, "read complexity filtration (after length filtration)")
+    @add_arg_table! settings begin
+        "--enable-complexity-filtration"
+            help = "enable complexity filtration"
+            action = :store_true
+        "--min-complexity"
+            help = "complexity threshold"
+            default = 0.3
+            metavar = "FLOAT"
+            arg_type = Float64
     end
     return parse_args(args, settings)
 end
@@ -192,13 +238,17 @@ end
 function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     ispass = true
 
-    @static if !Sys.iswindows()
-        try
-            x = readchomp(`pigz --version`)
-        catch
-            @error "Dependency missing: pigz not found." _module=nothing _group=nothing _id=nothing _file=nothing
-            ispass = false
-        end
+    try
+        run(pipeline(`pigz --version`, stderr=devnull))
+    catch
+        @error "Dependency missing: pigz not found." _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
+    try
+        run(pipeline(`pbzip2 --version`, stderr=devnull))
+    catch
+        @error "Dependency missing: pbzip2 not found." _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
     end
 
     if args["threads"] != Threads.nthreads()
@@ -225,8 +275,8 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     end
 
     # input
-    if length(args["read1"]) != length(args["read2"])
-        @error "--read1 R1-FASTQ... and --read2 R2-FASTQ... must be paired respectively" _module=nothing _group=nothing _id=nothing _file=nothing
+    if length(args["read2"]) != 0 && length(args["read1"]) != length(args["read2"])
+        @error "paired-end input: --read1 R1-FASTQ... and --read2 R2-FASTQ... must be paired respectively" _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
     for file in [args["read1"]; args["read2"]]
@@ -235,7 +285,8 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
             ispass = false
         end
     end
-    if !(uppercase(args["gzip"]) in ["AUTO", "YES", "NO"])
+    compress = uppercase(args["compress"])
+    if !(compress in ["AUTO", "NO", "GZIP", "GZ", "BZIP2", "BZ2"])
         @error "--gzip -g OPTION invalid; options should be one of AUTO, YES, NO." _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
@@ -249,10 +300,16 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
         ispass = false
     end
 
-    # N trimming
-    # if args["max-n"] < 0
-    #     @warn "--max-n -n INT less than 0: disable max-n filtration" INT=args["max-n"] _module=nothing _group=nothing _id=nothing _file=nothing
-    # end
+    # poly X tail trimming
+    if args["poly-mismatch-per-16mer"] >= 16 || args["poly-mismatch-per-16mer"] < 0
+        @error "--poly-mismatch-per-16mer not in range of 0:15" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
+
+    if args["poly-length"] <= 0
+        @error "--poly-length < 1 is not allowed" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
 
     # adapter triming
     if !isdna(args["adapter1"])
@@ -276,12 +333,21 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
         @error "--r1-r2-diff -D INT < 0 is not valid" INT=args["r1-r2-diff"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
-    if args["r1-r2-score-diff"] < 0.0
-        @error "--r1-r2-score-diff -s FLOAT < 0 is not valid" INT=args["r1-r2-score-diff"] _module=nothing _group=nothing _id=nothing _file=nothing
+    # if args["r1-r2-score-diff"] < 0.0
+    #     @error "--r1-r2-score-diff -s FLOAT < 0 is not valid" INT=args["r1-r2-score-diff"] _module=nothing _group=nothing _id=nothing _file=nothing
+    #     ispass = false
+    # end
+
+    if args["kmer-n-match"] < 0 || args["kmer-n-match"] > 16
+        @error "--kmer-n-match -s INT < 0 or > 16 are not valid" INT=args["kmer-n-match"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
-    if args["trim-score"] < 0.0
-        @error "--trim-score -S FLOAT < 0 is not valid" INT=args["trim-score"] _module=nothing _group=nothing _id=nothing _file=nothing
+    if args["trim-score-se"] < 0.0 || args["trim-score-se"] > 16.0
+        @error "--trim-score-se FLOAT < 0 or > 16 are not valid" INT=args["trim-score-se"] _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
+    if args["trim-score-pe"] < 0.0 || args["trim-score-pe"] > 32.0
+        @error "--trim-score-pe FLOAT < 0 or > 32 are not valid" INT=args["trim-score-pe"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
     if args["tail-length"] < 1
@@ -328,6 +394,11 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     # filter
     if !occursin(r"^\d+\:\d+$", args["length-range"])
         @error "--length-range RANGE invalid; RANGE should be MIN:MAX where MIN and MAX are positive integer" RANGE=args["length-range"] _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
+
+    if args["min-complexity"] >= 0.8 || args["min-complexity"] <= 0
+        @error "--min-complexity is invalid" _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
 

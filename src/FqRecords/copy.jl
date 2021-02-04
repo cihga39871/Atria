@@ -33,3 +33,16 @@ end
 @inline function safe_copyto!(dest::LongDNASeq, src::Vector{UInt8})
     copy!(dest, src)
 end
+
+@inline function safe_copyto!(dest::FqRecord, src::FqRecord)
+    safe_copyto!(dest.id, src.id, 1, length(src.id))
+
+    safe_copyto!(dest.seq.data, src.seq.data, 1, length(src.seq.data))
+    dest.seq.part = src.seq.part
+    dest.seq.shared = src.seq.shared
+
+    safe_copyto!(dest.des, src.des, 1, length(src.des))
+    safe_copyto!(dest.qual, src.qual, 1, length(src.qual))
+    safe_copyto!(dest.prob, src.prob, 1, length(src.prob))
+    
+end

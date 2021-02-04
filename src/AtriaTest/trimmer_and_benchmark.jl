@@ -31,16 +31,23 @@
         julia_wrapper_randtrim(["-h"])
 
         if Sys.iswindows()
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-c", "8", "--gzip", "yes"])
+            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-c", "8", "--compress", "gz"])
         else
-            run(`pigz peReadSimulated.R1.randtrim.fastq`)
-            run(`pigz peReadSimulated.R2.randtrim.fastq`)
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--gzip", "yes", "--check-identifier"])
+            run(`pigz --keep peReadSimulated.R1.randtrim.fastq`)
+            run(`pigz --keep peReadSimulated.R2.randtrim.fastq`)
+            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "gz", "--check-identifier"])
+
+            run(`pbzip2 peReadSimulated.R1.randtrim.fastq`)
+            run(`pbzip2 peReadSimulated.R2.randtrim.fastq`)
+            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "bz2", "--check-identifier"])
         end
 
 
-        julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq"])
+        julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration"])
+        julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration"])
+
         julia_wrapper_atria(["-h"], exit_after_help=false)
+        julia_wrapper_atria_single_end(["-h"], exit_after_help=false)
 
         julia_wrapper_readstat(["peReadSimulated.R1.atria.fastq", "peReadSimulated.R2.atria.fastq"])
         julia_wrapper_readstat(["-h"])

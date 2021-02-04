@@ -1,4 +1,6 @@
 #!bash
+export JULIA_NUM_THREADS=16
+
 run_atria(){
     local num_threads=1
     if [[ $1 ]]; then
@@ -98,7 +100,7 @@ run_trimmomatic(){
 		local isgz=
 	fi
 
-	/usr/bin/time -v java -jar /usr/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads $num_threads -phred33 $r1 $r2 $output-pair1.paired.fq$isgz $output-pair1.unpaired.fq$isgz $output-pair2.paired.fq$isgz $output-pair2.unpaired.fq$isgz ILLUMINACLIP:adapters.fa:2:30:10:1:1 MINLEN:1
+	/usr/bin/time -v java -jar /usr/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads $num_threads -phred33 $r1 $r2 $output-pair1.paired.fq$isgz $output-pair1.unpaired.fq$isgz $output-pair2.paired.fq$isgz $output-pair2.unpaired.fq$isgz ILLUMINACLIP:adapters.fa:2:30:10:1:TRUE:keepBothReads MINLEN:1
 }
 
 run_ktrim(){
@@ -108,42 +110,79 @@ run_ktrim(){
 	fi
 	local OUTDIR="Ktrim"
 	mkdir -p $OUTDIR
-	/usr/bin/time -v ktrim -1 $r2 -2 $r2 -t $num_threads -p 33 -q 1 -s 10 -a $a1 -b $a2
+	/usr/bin/time -v ktrim -1 $r1 -2 $r2 -t $num_threads -p 33 -q 1 -s 10 -a $a1 -b $a2 -o Ktrim/ktrim
 }
 
-atria-trim-arg(){
-	kmer_tolerance=$1
-	diff1=$2  # pe-adapter-diff
-	diff2=$3  # r1-r2-diff
-	score_diff=$4  # r1-r2-score-diff
-	trim_score=$5
-	outdir="Atria-3-biobits-$1-$2-$3-$4-$5"
-	$atria/src/atria -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 -T $kmer_tolerance -d $diff1 -D $diff2 -s $score_diff -S $trim_score --stats
-	$atria/src/atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab $outdir/TAIR10.sim_1.atria.fq $outdir/TAIR10.sim_2.atria.fq TAIR10.sim_2.length.tab > summary.$outdir
-	cat summary.$outdir
+run_fastp(){
+	local num_threads=1
+	if [[ $1 ]]; then
+		num_threads=$1
+	fi
+	local OUTDIR="fastp"
+	output=$OUTDIR/out.fastp
+	if [[ $r1 = *gz ]]; then
+		local isgz=.gz
+	else
+		local isgz=
+	fi
+	mkdir -p $OUTDIR
+	/usr/bin/time -v fastp --in1 $r1 --in2 $r2 --out1 $output.r1.fq$isgz --out2 $output.r2.fq$isgz \
+		-z 6 --adapter_sequence $a1 --adapter_sequence_r2 $a2 --disable_trim_poly_g --disable_quality_filtering --disable_length_filtering --thread $num_threads
 }
-atria-consensus-arg(){
-	outdir="Atria-consensus-$1-$2-$3"
-	$atria/src/atria -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --overlap-score $1 --min-ratio-mismatch $2 --prob-diff $3
+
+run_seqpurge() {
+	local num_threads=1
+	if [[ $1 ]]; then
+		num_threads=$1
+	fi
+    local folder=SeqPurge
+    mkdir -p "$folder"
+	# output always gziped
+    /usr/bin/time -v SeqPurge -in1 $r1 -in2 $r2 -out1 "$folder"/$r1.seqpurge.fq.gz -out2 "$folder"/$r2.seqpurge.fq.gz \
+        -a1 $a1 -a2 $a2 -mep 0.1 \
+        -qcut 0 -min_len 0 -summary "$folder"/seqpurge.summary -threads $num_threads
 }
-atria-src(){
-	outdir="Atria-src"
-	$atria/src/atria -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --stats
+
+run_atropos() {
+	# Atropos 1.1.29 with Python 3.8.5
+	local num_threads=1
+	if [[ $1 ]]; then
+		num_threads=$1
+	fi
+	if [[ $r1 = *gz ]]; then
+		local isgz=.gz
+	else
+		local isgz=
+	fi
+    local folder="Atropos"
+    mkdir -p "$folder"
+	if [[ $num_threads == 1 ]]
+	then
+	    /usr/bin/time -v atropos trim -a $a1 -A $a2 \
+	        -o "$folder"/$r1.atropos.fq$isgz -p "$folder"/$r2.atropos.fq$isgz -pe1 $r1 -pe2 $r2 \
+	        --aligner insert -e 0.1
+	else
+		/usr/bin/time -v atropos trim -a $a1 -A $a2 \
+	        -o "$folder"/$r1.atropos.fq$isgz -p "$folder"/$r2.atropos.fq$isgz -pe1 $r1 -pe2 $r2 \
+	        --aligner insert -e 0.1 --threads $num_threads --preserve-order
+	fi
 }
+
 
 mapping() {
-    bwa mem -t 20 $bwa_ref $1 $2 |\
-	samtools view -@ 5 -b -o $1.bam
+    bwa mem -v 1 -t 25 $bwa_ref $1 $2 |\
+	samtools view -@ 10 -b -o $1.bam
 }
+
 mapping_bowtie2(){
-	bowtie2 --maxins 800 --threads 20 -x $bwa_ref-bowtie2 -1 $1 -2 $2 2> $1.bowtie2.stat |\
-	samtools view -@ 5 -b -o $1.bowtie2.bam
+	bowtie2 --maxins 800 --threads 25 -x $bwa_ref-bowtie2 -1 $1 -2 $2 2> $1.bowtie2.stat |\
+	samtools view -@ 10 -b -o $1.bowtie2.bam
 }
 mapping_hisat2(){
-	hisat2 --threads 20 -x $bwa_ref-hisat2 -1 $1 -2 $2 -S $1.hisat2.sam 2> $1.hisat2.stat
+	hisat2 --threads 25 -x $bwa_ref-hisat2 -1 $1 -2 $2 -S $1.hisat2.sam 2> $1.hisat2.stat
 }
 qualtrim(){
-		local DIR=`dirname "$1"`/qualtrim
+		local DIR=`dirname "$1"`/../trimmed-qualtrim
 		if [[ $1 = *gz ]]
 		then
 			local num_threads=20
@@ -152,7 +191,11 @@ qualtrim(){
 			local num_threads=8
 			local gzext=
 		fi
-		time atria -r "$1" -R "$2" -t $num_threads \
+		if [[ $3 ]]
+		then
+			local num_threads=$3
+		fi
+		time atria -r "$1" -R "$2" -t $num_threads --check-identifier \
 		-o "$DIR" \
 		--no-tail-n-trim --max-n=-1 --no-adapter-trim --no-length-filtration \
 		--quality-score $QSCORE
@@ -161,7 +204,6 @@ qualtrim(){
 		rename --force "s/atria.truncated/qual$QSCORE.truncated/" "$DIR"/*truncated$gzext
 		rename --force "s/atria.log/qual$QSCORE.log/" "$DIR"/*log*
 }
-
 
 bowtie2stat(){
 	if [[ $1 ]]
@@ -176,13 +218,13 @@ bowtie2stat(){
 }
 
 pasteSamtoolsStats(){
-    grep ^SN $1| cut -f 2,4 | sed 's/\t# \(.*\)/ [\1]/' | sed 's/://' | awk 'BEGIN{print "sample"};{print}' > samtools-stats.collection
+    grep ^SN $1| cut -f 2,4 | sed 's/\t# \(.*\)/ [\1]/' | sed 's/://' | awk 'BEGIN{print "sample"};{print}' > samtools-stats.collection.txt
     for i in "$@"
     do
-        paste samtools-stats.collection <(grep ^SN $i| cut -f 3 | awk -v var=${i/.fastq*/} 'BEGIN{print var};{print}') > samtools-stats.collection.tmp
-        mv samtools-stats.collection.tmp samtools-stats.collection
+        paste samtools-stats.collection.txt <(grep ^SN $i| cut -f 3 | awk -v var=${i/.fastq*/} 'BEGIN{print var};{print}') > samtools-stats.collection.tmp
+        mv samtools-stats.collection.tmp samtools-stats.collection.txt
     done
-    echo Output: samtools-stats.collection
+    echo Output: samtools-stats.collection.txt
 }
 
 pasteTimeOutput(){
@@ -209,4 +251,16 @@ sam2bam(){
 			echo SamToBam failed: $i
 		fi
 	done
+}
+
+samalign(){
+	samtools view $1 | awk '{print $1"\t"$3"\t"$4"\t"$6}'
+}
+
+sampaste(){
+	paste <(samtools view $1 | awk '{print $1"\t"$3"\t"$4"\t"$6}') <(samtools view $2 | awk '{print $1"\t"$3"\t"$4"\t"$6}') | less -SN
+}
+
+akadiff(){
+	diff <(samalign $1) <(samalign $2) -y | less
 }

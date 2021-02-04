@@ -1,24 +1,22 @@
 
 ##### SRR330569: RNA-seq D. simulans
-working_dir=~/analysis/atria-benchmark/SRR330569
+working_dir=~/analysis/atria-benchmark/ERR4695159
 cd $working_dir
 
-r1=SRR330569.3_1.fastq.gz
-r2=SRR330569.3_2.fastq.gz
-a1=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG
-a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGAT
-# bwa_ref_genbank=genomes/Drosophila.simulans.fasta
-bwa_ref=`pwd`/genomes/dsim-all-chromosome-r2.02.fasta
+r1=ERR4695159_1.fastq.gz
+r2=ERR4695159_2.fastq.gz
+a1=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
+a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+bwa_ref=`pwd`/genomes/hg38.fasta.gz
 
 # download reference
 mkdir genomes
-# wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/754/195/GCF_000754195.2_ASM75419v2/GCF_000754195.2_ASM75419v2_genomic.fna.gz -O $bwa_ref_genbank.gz
-wget ftp://ftp.flybase.net/genomes/Drosophila_simulans/dsim_r2.02_FB2020_03/fasta/dsim-all-chromosome-r2.02.fasta.gz -O $bwa_ref.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.39_GRCh38.p13/GCF_000001405.39_GRCh38.p13_genomic.fna.gz -O $bwa_ref
 
 gzip -d $bwa_ref.gz
 
 # build reference
-hisat2-build $bwa_ref $bwa_ref-hisat2
+bowtie2-build $bwa_ref $bwa_ref-bowtie2
 
 
 ##### Pipelines
@@ -26,26 +24,26 @@ hisat2-build $bwa_ref $bwa_ref-hisat2
 . $atria/benchmark/trimming-functions.bash
 
 rm -f stderr.log
-run_atria 4 2>> stderr.log
+run_atria 16 2>> stderr.log
 
-run_atria_consensus 4 2>> stderr.log
+run_atria_consensus 16 2>> stderr.log
 
-run_adapterremoval 4 2>> stderr.log
+run_adapterremoval 16 2>> stderr.log
 
-run_skewer 4 2>> stderr.log
+run_skewer 16 2>> stderr.log
 
-run_trim_galore 4 2>> stderr.log
+run_trim_galore 16 2>> stderr.log
 
-run_trimmomatic 4 2>> stderr.log
+run_trimmomatic 16 2>> stderr.log
 
-run_ktrim 4 2>> stderr.log
+run_ktrim 16 2>> stderr.log
 pigz Ktrim/ktrim.read1.fq Ktrim/ktrim.read2.fq
 
-run_fastp 8 2>> stderr.log
+run_fastp 16 2>> stderr.log
 
-run_seqpurge 8 2>> stderr.log
+run_seqpurge 16 2>> stderr.log
 
-run_atropos  8 2>> stderr.log
+run_atropos  16 2>> stderr.log
 
 # mapping without qualtrim
 mkdir -p trimmed
@@ -78,11 +76,11 @@ ln -s ../Ktrim/ktrim.read2.fq.gz trimmed/ktrim.R2.fastq.gz
 ln -s ../fastp/out.fastp.r1.fq.gz trimmed/fastp.R1.fastq.gz
 ln -s ../fastp/out.fastp.r2.fq.gz trimmed/fastp.R2.fastq.gz
 
-ln -s ../SeqPurge/SRR330569.3_1.fastq.gz.seqpurge.fq.gz trimmed/seqpurge.R1.fastq.gz
-ln -s ../SeqPurge/SRR330569.3_2.fastq.gz.seqpurge.fq.gz trimmed/seqpurge.R2.fastq.gz
+ln -s ../SeqPurge/ERR4695159_1.fastq.gz.seqpurge.fq.gz trimmed/seqpurge.R1.fastq.gz
+ln -s ../SeqPurge/ERR4695159_2.fastq.gz.seqpurge.fq.gz trimmed/seqpurge.R2.fastq.gz
 
-ln -s ../Atropos/SRR330569.3_1.fastq.gz.atropos.fq.gz trimmed/atropos.R1.fastq.gz
-ln -s ../Atropos/SRR330569.3_2.fastq.gz.atropos.fq.gz trimmed/atropos.R2.fastq.gz
+ln -s ../Atropos/ERR4695159_1.fastq.gz.atropos.fq.gz trimmed/atropos.R1.fastq.gz
+ln -s ../Atropos/ERR4695159_2.fastq.gz.atropos.fq.gz trimmed/atropos.R2.fastq.gz
 
 
 # mapping after qualtrim
@@ -97,10 +95,9 @@ rename --force "s/atria.fastq/qual$QSCORE.fastq/" trimmed-qualtrim/*fastq*
 for i in trimmed*/*.R1*fastq.gz
 do
 	echo $i
-	mapping_hisat2 $i ${i/.R1/.R2}
+	mapping_bowtie2 $i ${i/.R1/.R2}
 
-	samtools stats $i.hisat2.sam > $i.hisat2.sam.samtools-stats &
-	pigz $i.hisat2.sam
+	samtools stats $i.bowtie2.bam > $i.bowtie2.bam.samtools-stats &
 done 2>&1 | tee mapping.log
 
 

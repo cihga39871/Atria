@@ -181,7 +181,7 @@ for T in (UInt8, UInt16, UInt32, UInt64)
             ncompatible = count_ones(unsafe_load(bp + ptr_from) & trunc_seq.b)
             # check compatible of ignored base (idx = 2ptr_from)
             ncompatible += (unsafe_load(bp + ptr_from - 1) >> 4 ) & trunc_seq.a1 == trunc_seq.a1
-            if ncompatible >= min_compatible + 1 && ncompatible > best_ncompatible
+            if ncompatible >= min_compatible && ncompatible > best_ncompatible
                 best_idx = ptr_from * 2
                 best_ncompatible = ncompatible
             end
@@ -202,3 +202,8 @@ end
 end
 
 # @inline bitwise_scan(a::LongDNASeq, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807) = bitwise_scan(TruncSeq{UInt64}(a), b, from, allowed_mismatch; until = until)
+
+# trunc_seq = BioBits.TruncSeq(typemin(UInt64), dna"GGGGGGGGGGGGGGGGGGGGGGGGG")
+
+# @benchmark bitwise_scan(seq_head_set, b, 1, 2)
+# @benchmark bitwise_scan(trunc_seq, b, 1, 2)

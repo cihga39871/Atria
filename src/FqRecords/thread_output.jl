@@ -20,6 +20,22 @@ function write_fqs_threads!(io1out::IO, io2out::IO,
     writebytes(io2out, outr2s, range_filter)
 end
 
+"""
+    write_fqs_threads!(io1out::IO,
+        outr1s::Vector{Vector{UInt8}},
+        r1s::Vector{FqRecord},
+        n_reads::Int, range_filter)
+
+The interface to write paired FASTQ reads.
+"""
+function write_fqs_threads!(io1out::IO,
+    outr1s::Vector{Vector{UInt8}},
+    r1s::Vector{FqRecord},
+    n_reads::Int, range_filter)
+
+    FqRecord2StringVec!(outr1s::Vector{Vector{UInt8}}, r1s::Vector{FqRecord}, n_reads::Int)
+    writebytes(io1out, outr1s, range_filter)
+end
 
 """
     FqRecord2StringVec!(out::Vector{UInt8}, r::FqRecord)
@@ -80,8 +96,8 @@ end
         append!(outrs,
             Vector{UInt8}[Base.StringVector(0) for i = 1:(stop-n_outrs)])
     end
-    @sync for reads_start in 1:4096:stop
-        reads_end = min(reads_start + 4095, stop)
+    @sync for reads_start in 1:512:stop
+        reads_end = min(reads_start + 511, stop)
         reads_range = reads_start:reads_end
         Threads.@spawn FqRecord2StringVec!(outrs, rs, reads_range)
     end
