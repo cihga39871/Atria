@@ -1,6 +1,6 @@
 # Atria
 
-Atria is designed to trim adapters and low-quality bases of **pair-end** next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree.
+Atria is designed to trim adapters and low-quality bases of next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree.
 
 ## Contents
 
