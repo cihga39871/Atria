@@ -140,7 +140,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
         polyX_idx, polyX_length = polyX_tail_scan(DNA_G, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
     end : nothing
 
@@ -148,7 +148,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
         polyX_idx, polyX_length = polyX_tail_scan(DNA_T, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
     end : nothing
 
@@ -156,7 +156,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
         polyX_idx, polyX_length = polyX_tail_scan(DNA_A, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
     end : nothing
 
@@ -164,7 +164,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
         polyX_idx, polyX_length = polyX_tail_scan(DNA_C, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
     end : nothing
 

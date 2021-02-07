@@ -156,12 +156,12 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_G, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
         polyX_idx, polyX_length = polyX_tail_scan(DNA_G, r2, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r2, polyX_idx)
+            tail_trim!(r2, polyX_idx)
         end
     end : nothing
 
@@ -169,12 +169,12 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_T, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
         polyX_idx, polyX_length = polyX_tail_scan(DNA_T, r2, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r2, polyX_idx)
+            tail_trim!(r2, polyX_idx)
         end
     end : nothing
 
@@ -182,12 +182,12 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_A, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
         polyX_idx, polyX_length = polyX_tail_scan(DNA_A, r2, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r2, polyX_idx)
+            tail_trim!(r2, polyX_idx)
         end
     end : nothing
 
@@ -195,12 +195,12 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_C, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r1, polyX_idx)
+            tail_trim!(r1, polyX_idx)
         end
         polyX_idx, polyX_length = polyX_tail_scan(DNA_C, r2, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
-            tail_trim(r2, polyX_idx)
+            tail_trim!(r2, polyX_idx)
         end
     end : nothing
 
