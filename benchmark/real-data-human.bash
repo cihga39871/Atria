@@ -24,26 +24,26 @@ bowtie2-build $bwa_ref $bwa_ref-bowtie2
 . $atria/benchmark/trimming-functions.bash
 
 rm -f stderr.log
-run_atria 16 2>> stderr.log
+run_atria 8 2>> stderr.log
 
-run_atria_consensus 16 2>> stderr.log
+run_atria_consensus 8 2>> stderr.log
 
-run_adapterremoval 16 2>> stderr.log
+run_adapterremoval 8 2>> stderr.log
 
-run_skewer 16 2>> stderr.log
+run_skewer 8 2>> stderr.log
 
-run_trim_galore 16 2>> stderr.log
+run_trim_galore 8 2>> stderr.log
 
-run_trimmomatic 16 2>> stderr.log
+run_trimmomatic 8 2>> stderr.log
 
-run_ktrim 16 2>> stderr.log
+run_ktrim 8 2>> stderr.log
 pigz Ktrim/ktrim.read1.fq Ktrim/ktrim.read2.fq
 
-run_fastp 16 2>> stderr.log
+run_fastp 8 2>> stderr.log
 
-run_seqpurge 16 2>> stderr.log
+run_seqpurge 8 2>> stderr.log
 
-run_atropos  16 2>> stderr.log
+run_atropos 8 2>> stderr.log
 
 # mapping without qualtrim
 mkdir -p trimmed
@@ -55,11 +55,6 @@ ln -s ../Atria/${r2/.fastq*/}.atria.fastq.gz trimmed/atria.R2.fastq.gz
 
 ln -s ../Atria-consensus/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-consensus.R1.fastq.gz
 ln -s ../Atria-consensus/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-consensus.R2.fastq.gz
-
-# ln -s ../Atria-src/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-src.R1.fastq.gz
-# ln -s ../Atria-src/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-src.R2.fastq.gz
-# ln -s ../Atria-consensus-src/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-consensus-src.R1.fastq.gz
-# ln -s ../Atria-consensus-src/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-consensus-src.R2.fastq.gz
 
 ln -s ../Skewer/Skewer-trimmed-pair1.fastq.gz trimmed/Skewer.R1.fastq.gz
 ln -s ../Skewer/Skewer-trimmed-pair2.fastq.gz trimmed/Skewer.R2.fastq.gz

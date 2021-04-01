@@ -89,27 +89,35 @@ run_trimmomatic 8 2>> stderr.log
 run_trimmomatic 16 2>> stderr.log
 run_trimmomatic 32 2>> stderr.log
 
-run_ktrim 1 2> stderr.log
-run_ktrim 2 2>> stderr.log
-run_ktrim 4 2>> stderr.log
-run_ktrim 8 2>> stderr.log
-run_ktrim 16 2>> stderr.log
-run_ktrim 32 2>> stderr.log
+run_ktrim 1 2> stderr.ktrim.log
+run_ktrim 2 2>> stderr.ktrim.log
+run_ktrim 4 2>> stderr.ktrim.log
+run_ktrim 8 2>> stderr.ktrim.log
+run_ktrim 16 2>> stderr.ktrim.log
+run_ktrim 32 2>> stderr.ktrim.log
 
-run_fastp 2 2> stderr.log
-run_fastp 4 2>> stderr.log
-run_fastp 8 2>> stderr.log
-run_fastp 16 2>> stderr.log
-run_fastp 1 2>> stderr.log # multi-thread fastp disorganizes read order, leading to mulfunction of evalTrimming.pl
+run_fastp 2 2> stderr.fastp.log
+run_fastp 4 2>> stderr.fastp.log
+run_fastp 8 2>> stderr.fastp.log
+run_fastp 16 2>> stderr.fastp.log
+run_fastp 1 2>> stderr.fastp.log # multi-thread fastp disorganizes read order, leading to mulfunction of evalTrimming.pl
 
-run_atropos 1 2> stderr.log
-run_atropos 2 2>> stderr.log
-run_atropos 4 2>> stderr.log
-run_atropos 8 2>> stderr.log
-run_atropos 16 2>> stderr.log
-run_atropos 32 2>> stderr.log
+# run_fastqpuri 1 2> stderr.fastqpuri.log  # no parallel implementation!
+
+run_atropos 1 2> stderr.atropos.log
+run_atropos 2 2>> stderr.atropos.log
+run_atropos 4 2>> stderr.atropos.log
+run_atropos 8 2>> stderr.atropos.log
+run_atropos 16 2>> stderr.atropos.log
+run_atropos 32 2>> stderr.atropos.log
 
 # SeqPurge cannot output without gzip, so leave it in gzip compression test
+# run_seqpurge 1 2> stderr.seqpurge.log
+# run_seqpurge 2 2>> stderr.seqpurge.log
+# run_seqpurge 4 2>> stderr.seqpurge.log
+# run_seqpurge 8 2>> stderr.seqpurge.log
+# run_seqpurge 16 2>> stderr.seqpurge.log
+# run_seqpurge 32 2>> stderr.seqpurge.log
 
 pids=
 
@@ -139,6 +147,14 @@ pids[8]=$!
 
 $atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atropos/TAIR10.sim_1.fq.atropos.fq Atropos/TAIR10.sim_2.fq.atropos.fq TAIR10.sim_2.length.tab > summary.Atropos &
 pids[9]=$!
+
+# $atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab Atria-src/TAIR10.sim_1.atria.fq Atria-src/TAIR10.sim_2.atria.fq TAIR10.sim_2.length.tab > summary.Atria-src
+
+
+# $atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab FastqPuri/out.fastqpuri1_good.fq FastqPuri/out.fastqpuri2_good.fq TAIR10.sim_2.length.tab > summary.FastqPuri &
+# TP	FP_ft	FP_ot	FN_fr	FN_ut	TN	PPV	Sen.	Spec.	mCC
+# 0	185805	666885	11167455	0	32505135	0	0	0.99431631516255	-0.0808480134645243
+# (FPR, TPR) = (0.00568368483745041, 0)
 
 
 for pid in ${pids[*]}
@@ -189,13 +205,13 @@ run_atria_consensus 32 2>> stderr.gz.log
 run_adapterremoval 1 2>> stderr.gz.log
 run_adapterremoval 2 2>> stderr.gz.log
 run_adapterremoval 4 2>> stderr.gz.log
-# run_adapterremoval 8 2>> stderr.gz.log
+# run_adapterremoval 8 2>> stderr.gz.log  # too slow
 # run_adapterremoval 16 2>> stderr.gz.log
 
 run_skewer 1 2>> stderr.gz.log
 run_skewer 2 2>> stderr.gz.log
 run_skewer 4 2>> stderr.gz.log
-# run_skewer 8 2>> stderr.gz.log
+# run_skewer 8 2>> stderr.gz.log  # too slow
 # run_skewer 16 2>> stderr.gz.log
 
 run_trim_galore 1 2>> stderr.gz.log
@@ -208,29 +224,19 @@ run_trim_galore 32 2>> stderr.gz.log
 run_trimmomatic 1 2>> stderr.gz.log
 run_trimmomatic 2 2>> stderr.gz.log
 run_trimmomatic 4 2>> stderr.gz.log
-# run_trimmomatic 8 2>> stderr.gz.log
+# run_trimmomatic 8 2>> stderr.gz.log  # too slow
 # run_trimmomatic 16 2>> stderr.gz.log
 
 
-run_seqpurge 1 2> stderr.gz.log
+run_seqpurge 1 2> stderr.seqpurge-gz.log
 
 pigz -d SeqPurge/TAIR10.sim_1.fq.seqpurge.fq.gz
 pigz -d SeqPurge/TAIR10.sim_2.fq.seqpurge.fq.gz
 $atria/benchmark/evalTrimming.pl 200 TAIR10.sim_1.length.tab SeqPurge/TAIR10.sim_1.fq.seqpurge.fq SeqPurge/TAIR10.sim_2.fq.seqpurge.fq TAIR10.sim_2.length.tab > summary.SeqPurge
 
-run_seqpurge 2 2>> stderr.gz.log
-run_seqpurge 4 2>> stderr.gz.log
-run_seqpurge 8 2>> stderr.gz.log
-run_seqpurge 16 2>> stderr.gz.log
-run_seqpurge 32 2>> stderr.gz.log
+run_seqpurge 2 2>> stderr.seqpurge-gz.log
+run_seqpurge 4 2>> stderr.seqpurge-gz.log
 
-run_fastp 1 2> stderr.gz.log
-run_fastp 2 2>> stderr.gz.log
-run_fastp 4 2>> stderr.gz.log
-
-run_atropos 1 2> stderr.gz.log
-run_atropos 2 2>> stderr.gz.log
-run_atropos 4 2>> stderr.gz.log
 
 ##### stat
 pasteTimeOutput stderr.log > time_benchmark.txt

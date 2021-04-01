@@ -5,7 +5,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     time_program_initializing = time()
 
-    atria_version = "v2.0.0"
+    atria_version = "v2.1.0"
 
     args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
 
@@ -80,25 +80,25 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     #================== Arguments ====================#
 
     command                  = `$ARGS`
-    nthread                  =  args["threads"]
-    max_chunk_size           =  2 ^ args["log2-chunk-size"]
+    nthread                  =  args["threads"               ]
+    max_chunk_size           =  2 ^ args["log2-chunk-size"   ]
     # polyX
-    min_poly_length          = args["poly-length"]
+    min_poly_length          = args["poly-length"            ]
     poly_mismatch_per_16mer  = args["poly-mismatch-per-16mer"]
     # N
-    max_N                    =  args["max-n"]
+    max_N                    =  args["max-n"                 ]
     # adapter
     adapter1                 = LongDNASeq(args["adapter1"]) |> bitsafe!
     adapter1_seqheadset      = SeqHeadSet(adapter1)
     # NOTE: TruncSeq has some unknown accuracy problems.
-    kmer_tolerance           = args["kmer-tolerance"]
+    kmer_tolerance           = args["kmer-tolerance"          ]
     kmer_tolerance_consensus = args["kmer-tolerance-consensus"]
-    trim_score               = args["trim-score-se"]
-    tail_length              = args["tail-length"   ]
+    trim_score               = args["trim-score-se"           ]
+    tail_length              = args["tail-length"             ]
     # consensus
     # hard clip
     nclip_after        = args["clip-after"]
-    nclip_front        = args["clip5"]
+    nclip_front        = args["clip5"     ]
     # quality
     quality_offset     = Trimmer.get_quality_offset(args["quality-format"])
     quality_kmer       = args["quality-kmer"]
@@ -111,17 +111,18 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     # feature enable/disable
     do_check_identifier      =  false
-    do_polyG                 =  args["polyG"]
-    do_polyT                 =  args["polyT"]
-    do_polyA                 =  args["polyA"]
-    do_polyC                 =  args["polyC"]
+    do_polyG                 =  args["polyG"               ]
+    do_polyT                 =  args["polyT"               ]
+    do_polyA                 =  args["polyA"               ]
+    do_polyC                 =  args["polyC"               ]
     do_length_filtration     = !args["no-length-filtration"]
-    do_adapter_trimming      = !args["no-adapter-trim"]
+    do_adapter_trimming      = !args["no-adapter-trim"     ]
     do_consensus_calling     =  false
     do_hard_clip_3_end       =  nclip_after > 0
     do_hard_clip_5_end       =  nclip_front > 0
-    do_quality_trimming      = !args["no-quality-trim"]
-    do_tail_n_trimming       = !args["no-tail-n-trim"]
+    do_quality_trimming      = !args["no-quality-trim"     ]
+    do_tail_n_trimming       = !args["no-tail-n-trim"      ]
+    do_tail_low_qual_trimming=  do_polyG || do_polyT || do_polyA || do_polyC || do_adapter_trimming
     do_max_n_filtration      =  max_N > 0
     do_read_stats            =  args["stats"]
     do_complexity_filtration =  args["enable-complexity-filtration"]
@@ -186,7 +187,9 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
 
     #======= Trim N from the tail =======#
-    TailNTrim = do_tail_n_trimming ? quote
+    TailNTrim = do_tail_low_qual_trimming ? quote
+        tail_low_qual_trim!(r1::FqRecord)
+    end : do_tail_n_trimming ? quote
         tail_N_trim!(r1::FqRecord)
     end : nothing
 

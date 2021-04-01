@@ -7,7 +7,6 @@ r1=SRR330569.3_1.fastq.gz
 r2=SRR330569.3_2.fastq.gz
 a1=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG
 a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGAT
-# bwa_ref_genbank=genomes/Drosophila.simulans.fasta
 bwa_ref=`pwd`/genomes/dsim-all-chromosome-r2.02.fasta
 
 # download reference
@@ -26,19 +25,19 @@ hisat2-build $bwa_ref $bwa_ref-hisat2
 . $atria/benchmark/trimming-functions.bash
 
 rm -f stderr.log
-run_atria 4 2>> stderr.log
+run_atria 8 2>> stderr.log
 
-run_atria_consensus 4 2>> stderr.log
+run_atria_consensus 8 2>> stderr.log
 
-run_adapterremoval 4 2>> stderr.log
+run_adapterremoval 8 2>> stderr.log
 
-run_skewer 4 2>> stderr.log
+run_skewer 8 2>> stderr.log
 
-run_trim_galore 4 2>> stderr.log
+run_trim_galore 8 2>> stderr.log
 
-run_trimmomatic 4 2>> stderr.log
+run_trimmomatic 8 2>> stderr.log
 
-run_ktrim 4 2>> stderr.log
+run_ktrim 8 2>> stderr.log
 pigz Ktrim/ktrim.read1.fq Ktrim/ktrim.read2.fq
 
 run_fastp 8 2>> stderr.log
@@ -57,11 +56,6 @@ ln -s ../Atria/${r2/.fastq*/}.atria.fastq.gz trimmed/atria.R2.fastq.gz
 
 ln -s ../Atria-consensus/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-consensus.R1.fastq.gz
 ln -s ../Atria-consensus/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-consensus.R2.fastq.gz
-
-# ln -s ../Atria-src/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-src.R1.fastq.gz
-# ln -s ../Atria-src/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-src.R2.fastq.gz
-# ln -s ../Atria-consensus-src/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-consensus-src.R1.fastq.gz
-# ln -s ../Atria-consensus-src/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-consensus-src.R2.fastq.gz
 
 ln -s ../Skewer/Skewer-trimmed-pair1.fastq.gz trimmed/Skewer.R1.fastq.gz
 ln -s ../Skewer/Skewer-trimmed-pair2.fastq.gz trimmed/Skewer.R2.fastq.gz

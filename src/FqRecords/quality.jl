@@ -56,3 +56,23 @@ end
     end
     @fastmath value/n
 end
+
+# function qualcounttable(rs::Vector{FqRecord}, quality_offset::UInt8=0x21)
+#     max_len = 0
+#     for r in rs
+#         len = length(r.qual)
+#         if len > max_len
+#             max_len = len
+#         end
+#     end
+#
+#     qualtable = zeros(Int, max_len, 30)
+#     for r in rs
+#         len = length(r.qual)
+#         @inbounds for i = 1:len
+#             q = min(r.qual[i] - quality_offset, 30)
+#             qualtable[i, q] += 1
+#         end
+#     end
+#     qualtable
+# end

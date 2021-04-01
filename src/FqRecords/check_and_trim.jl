@@ -76,6 +76,20 @@ end
     return
 end
 
+@inline function tail_low_qual_trim!(r::FqRecord)::Nothing
+    nbase = length(r.seq::LongDNASeq)::Int64
+    # trim end
+    n = nbase::Int64
+    @inbounds while n::Int64 >= 1
+        (r.prob)[n] < 0.3 ? n -= 1 : break  # 0.3: phred Q < 1.5
+    end
+    if n::Int64 != nbase::Int64
+        resize!(r.seq::LongDNASeq, n::Int64)
+        resize!(r.qual, n)
+        resize!(r.prob, n)
+    end
+    return
+end
 
 """
     qualitymatch(r::FqRecord, q0::UInt8, qn::UInt64, n::Int64)::Int64
@@ -170,9 +184,9 @@ NANANANANANANANA        : (NaN  0.0)
     end
     n_compensate = nbase % 16
     if n_compensate == 0
-        complexity = @fastmath(1 - n_ones / (15*n_valid_seq_data))
+        complexity = @fastmath(1 - n_ones / (15 * n_valid_seq_data))
     else
-        complexity = @fastmath(1 - n_ones / (15*(n_valid_seq_data - 1) + n_compensate))
+        complexity = @fastmath(1 - n_ones / (15 * (n_valid_seq_data - 1) + n_compensate))
     end
 end
 

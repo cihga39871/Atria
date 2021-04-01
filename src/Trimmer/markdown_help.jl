@@ -12,7 +12,7 @@ Try `atria -h` or `atria --help` for more information.
 
 ### Input and Output
 
-The input files should be paired-end FastQ(.gz) files (in the same order), or single-end fastqs:
+The input files should be paired-end FastQ(.gz|.bz2) files (in the same order), or single-end fastqs:
 
 1. Read 1 files: `-r X_R1.FQ Y_R1.FQ.GZ ...`
 

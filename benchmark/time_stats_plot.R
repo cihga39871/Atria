@@ -17,7 +17,7 @@ args <- parser$parse_args()
 
 if (FALSE){
     setwd("~/analysis/atria-benchmark/simulate")
-    args <- parser$parse_args(c("-i", "stats.time_benchmark2.df.txt", "stats.time_benchmark_gz2.df.txt", "-o", "time_stats_plot2.html"))
+    args <- parser$parse_args(c("-i", "stats.time_benchmark3.df.txt", "stats.time_benchmark_gz3.df.txt", "-o", "time_stats_plot2.html"))
 }
 
 wrapper <- function(input_path, show_legend, is_gz){
@@ -36,6 +36,20 @@ wrapper <- function(input_path, show_legend, is_gz){
     input$Trimmer[grepl("fastp", input$Command)] <- "Fastp"
     input$Trimmer[grepl("SeqPurge", input$Command)] <- "SeqPurge"
     
+    input_labels <- c("Atria (consensus)",
+                      "Atria",
+                      "AdapterRemoval",
+                      "Skewer",
+                      "Trim Galore",
+                      "Trimmomatic",
+                      "Ktrim",
+                      "Atropos",
+                      "Fastp",
+                      "SeqPurge"
+                      )
+    
+    input$Trimmer <- factor(input$Trimmer, input_labels)
+    
     # input$Command <- NULL
     
     input_value = input
@@ -44,7 +58,9 @@ wrapper <- function(input_path, show_legend, is_gz){
             input_value[i,j] <- sub(" ±.*", "", input[i,j])
         }
         if (!any(is.na(as.numeric(input_value[,j])))) {
-            input_value[,j] <- as.numeric(input_value[,j])
+            if (class(input_value[,j]) != "factor") {
+                input_value[,j] <- as.numeric(input_value[,j])    
+            }
         }
     }
     
@@ -54,9 +70,11 @@ wrapper <- function(input_path, show_legend, is_gz){
             input_sd[i,j] <- sub(".*± ", "", input[i,j])
         }
         if (!any(is.na(as.numeric(input_sd[,j])))) {
-            input_sd[,j] <- as.numeric(input_sd[,j])
-            if (all(input_sd[,j] == input_value[,j])) {
-                input_sd[,j] <- 0
+            if (class(input_value[,j]) != "factor") {
+                input_sd[,j] <- as.numeric(input_sd[,j])
+                if (all(input_sd[,j] == input_value[,j])) {
+                    input_sd[,j] <- 0
+                }
             }
         }
     }
@@ -94,7 +112,7 @@ wrapper <- function(input_path, show_legend, is_gz){
     }
     x_tick_vals = unique(input_value$Threads)
     
-    fig_speed <- plot_ly(x=input_value$Threads, y=input_value$Speed..M.Bases.s., color=input_value$Trimmer, error_y = list(array=speed_error_y_array), showlegend=show_legend) %>%
+    fig_speed <- plot_ly(x=input_value$Threads, y=input_value$Speed..M.Bases.s., color=input_value$Trimmer, legendgroup=input_value$Trimmer, error_y = list(array=speed_error_y_array), showlegend=show_legend) %>%
         add_lines(line = list(shape = "spline" )) %>%
         add_markers(showlegend = FALSE) %>%
         layout(
@@ -106,7 +124,7 @@ wrapper <- function(input_path, show_legend, is_gz){
             ))
     fig_speed
     
-    fig_efficiency <- plot_ly(x=input_value$Threads, y=input_value$Efficiency..M.Bases.s.CPU., color=input_value$Trimmer, error_y = list(array=efficiency_error_y_array), showlegend=FALSE) %>%
+    fig_efficiency <- plot_ly(x=input_value$Threads, y=input_value$Efficiency..M.Bases.s.CPU., color=input_value$Trimmer, legendgroup=input_value$Trimmer, error_y = list(array=efficiency_error_y_array), showlegend=FALSE) %>%
         add_lines(line = list(shape = "spline")) %>%
         add_markers(showlegend = FALSE) %>%
         layout(
@@ -118,7 +136,7 @@ wrapper <- function(input_path, show_legend, is_gz){
             ))
     fig_efficiency
     
-    fig_speed_vs_realCPU <- plot_ly(x=input_value$CPU, y=input_value$Speed..M.Bases.s., color=input_value$Trimmer, error_y = list(array=efficiency_error_y_array), showlegend=FALSE) %>%
+    fig_speed_vs_realCPU <- plot_ly(x=input_value$CPU, y=input_value$Speed..M.Bases.s., color=input_value$Trimmer, legendgroup=input_value$Trimmer, error_y = list(array=efficiency_error_y_array), showlegend=FALSE) %>%
         add_trace(line = list(shape = "spline")) %>%
         add_markers(showlegend = FALSE) %>%
         layout(
@@ -142,11 +160,11 @@ wrapper <- function(input_path, show_legend, is_gz){
 }
 
 stat_1 <- wrapper(args$input[1], T, F)
-stat_2 <- wrapper(args$input[2], F, T)
+stat_2 <- wrapper(args$input[2], T, T)
 
 
 p <- subplot(stat_1$fig_speed %>% layout(legend = list(orientation='h', 
-                                                       y=1.13, 
+                                                       y=1.3, 
                                                        bgcolor=rgb(0,0,0,0))), 
         stat_1$fig_speed_vs_realCPU,
         stat_2$fig_speed, 
@@ -158,7 +176,7 @@ htmlwidgets::saveWidget(as_widget(p), args$out)
 
 plogx <- subplot(stat_1$fig_speed %>% layout(xaxis = list(type='log'),
                                              legend = list(orientation='h', 
-                                                       y=1.13, 
+                                                       y=1.3, 
                                                        bgcolor=rgb(0,0,0,0))), 
              stat_1$fig_speed_vs_realCPU %>% layout(xaxis = list(type='log')),
              stat_2$fig_speed %>% layout(xaxis = list(type='log')), 

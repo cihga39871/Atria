@@ -112,7 +112,7 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
             arg_type = Int64
         "--trim-score-pe"
             help = "(FOR PAIRED END) if final score [0-32] of read pair is greater than FLOAT, the reads will be trimmed."
-            default = 10.0
+            default = 19.0
             metavar = "FLOAT"
             arg_type = Float64
         "--trim-score-se"

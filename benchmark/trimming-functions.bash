@@ -168,11 +168,11 @@ run_atropos() {
 	fi
 }
 
-
 mapping() {
     bwa mem -v 1 -t 25 $bwa_ref $1 $2 |\
 	samtools view -@ 10 -b -o $1.bam
 }
+
 
 mapping_bowtie2(){
 	bowtie2 --maxins 800 --threads 25 -x $bwa_ref-bowtie2 -1 $1 -2 $2 2> $1.bowtie2.stat |\
@@ -204,7 +204,6 @@ qualtrim(){
 		rename --force "s/atria.truncated/qual$QSCORE.truncated/" "$DIR"/*truncated$gzext
 		rename --force "s/atria.log/qual$QSCORE.log/" "$DIR"/*log*
 }
-
 bowtie2stat(){
 	if [[ $1 ]]
 	then
@@ -251,16 +250,4 @@ sam2bam(){
 			echo SamToBam failed: $i
 		fi
 	done
-}
-
-samalign(){
-	samtools view $1 | awk '{print $1"\t"$3"\t"$4"\t"$6}'
-}
-
-sampaste(){
-	paste <(samtools view $1 | awk '{print $1"\t"$3"\t"$4"\t"$6}') <(samtools view $2 | awk '{print $1"\t"$3"\t"$4"\t"$6}') | less -SN
-}
-
-akadiff(){
-	diff <(samalign $1) <(samalign $2) -y | less
 }

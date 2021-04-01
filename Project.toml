@@ -1,11 +1,10 @@
 name = "Atria"
 uuid = "226cbef3-b485-431c-85c2-d8bd8da14025"
 authors = ["Jiacheng Chuan <jiacheng_chuan@outlook.com>"]
-version = "2.0.0"
+version = "2.1.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 BioSequences = "7e6ae17a-c86d-528c-b3b9-7f778a29fe59"
 BioSymbols = "3c28c6f8-a34d-59c4-9654-267d177fcfa9"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"

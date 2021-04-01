@@ -25,26 +25,26 @@ bwa index $bwa_ref
 . $atria/benchmark/trimming-functions.bash
 
 rm -f stderr.log
-run_atria 4 2>> stderr.log
+run_atria 8 2>> stderr.log
 
-run_atria_consensus 4 2>> stderr.log
+run_atria_consensus 8 2>> stderr.log
 
-run_adapterremoval 4 2>> stderr.log
+run_adapterremoval 8 2>> stderr.log
 
-run_skewer 4 2>> stderr.log
+run_skewer 8 2>> stderr.log
 
-run_trim_galore 4 2>> stderr.log
+run_trim_galore 8 2>> stderr.log
 
-run_trimmomatic 4 2>> stderr.log
+run_trimmomatic 8 2>> stderr.log
 
-run_ktrim 4 2>> stderr.log
+run_ktrim 8 2>> stderr.log
 
 run_fastp 8 2>> stderr.log
 
 run_seqpurge 8 2>> stderr.log
 pigz -d SeqPurge/*gz
 
-run_atropos  8 2>> stderr.log
+run_atropos 8 2>> stderr.log
 
 
 # mapping without qualtrim
@@ -57,11 +57,6 @@ ln -s ../Atria/${r2/.fastq*/}.atria.fastq trimmed/atria.R2.fastq
 
 ln -s ../Atria-consensus/${r1/.fastq*/}.atria.fastq trimmed/atria-consensus.R1.fastq
 ln -s ../Atria-consensus/${r2/.fastq*/}.atria.fastq trimmed/atria-consensus.R2.fastq
-
-# ln -s ../Atria-src/${r1/.fastq*/}.atria.fastq trimmed/atria-src.R1.fastq
-# ln -s ../Atria-src/${r2/.fastq*/}.atria.fastq trimmed/atria-src.R2.fastq
-# ln -s ../Atria-consensus-src/${r1/.fastq*/}.atria.fastq trimmed/atria-consensus-src.R1.fastq
-# ln -s ../Atria-consensus-src/${r2/.fastq*/}.atria.fastq trimmed/atria-consensus-src.R2.fastq
 
 ln -s ../Skewer/Skewer-trimmed-pair1.fastq trimmed/Skewer.R1.fastq
 ln -s ../Skewer/Skewer-trimmed-pair2.fastq trimmed/Skewer.R2.fastq
@@ -91,13 +86,6 @@ do
 	mapping $i ${i/.R1./.R2.}
 	samtools stats $i.bam > $i.bam.samtools-stats
 done 2>&1 | tee mapping.log
-
-# for r1 in trimmed/*.R1.fastq
-# do
-# 	echo $r1
-# 	mapping_bowtie2 $r1 ${r1/.R1./.R2.}
-# 	samtools stats $r1.bowtie2.bam > $r1.bam.bowtie2.samtools-stats
-# done 2>&1 | tee mapping.log
 
 cd trimmed
 pasteSamtoolsStats *samtools-stats

@@ -5,7 +5,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
     time_program_initializing = time()
 
-    atria_version = "v2.0.0"
+    atria_version = "v2.1.0"
 
     args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
 
@@ -81,34 +81,34 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     #================== Arguments ====================#
 
     command                  = `$ARGS`
-    nthread                  =  args["threads"]
+    nthread                  =  args["threads"            ]
     max_chunk_size           =  2 ^ args["log2-chunk-size"]
     # polyX
-    min_poly_length          = args["poly-length"]
+    min_poly_length          = args["poly-length"            ]
     poly_mismatch_per_16mer  = args["poly-mismatch-per-16mer"]
     # N
-    max_N                    = args["max-n"]
+    max_N                    = args["max-n"                  ]
     # adapter
     adapter1                 = LongDNASeq(args["adapter1"]) |> bitsafe!
     adapter2                 = LongDNASeq(args["adapter2"]) |> bitsafe!
     adapter1_seqheadset      = SeqHeadSet(adapter1)
     adapter2_seqheadset      = SeqHeadSet(adapter2)
     # NOTE: TruncSeq has some unknown accuracy problems.
-    kmer_tolerance           = args["kmer-tolerance"]
+    kmer_tolerance           = args["kmer-tolerance"          ]
     kmer_tolerance_consensus = args["kmer-tolerance-consensus"]
-    pe_adapter_diff          = args["pe-adapter-diff"]
-    r1_r2_diff               = args["r1-r2-diff"]
-    # score_diff               = args["r1-r2-score-diff"]
-    kmer_n_match             = args["kmer-n-match"]
-    trim_score               = args["trim-score-pe"]
-    tail_length              = args["tail-length"   ]
+    pe_adapter_diff          = args["pe-adapter-diff"         ]
+    r1_r2_diff               = args["r1-r2-diff"              ]
+    kmer_n_match             = args["kmer-n-match"            ]
+    trim_score               = args["trim-score-pe"           ]
+    trim_score_se            = args["trim-score-se"           ]
+    tail_length              = args["tail-length"             ]
     # consensus
-    overlap_score      = args["overlap-score"]
+    overlap_score      = args["overlap-score"     ]
     min_ratio_mismatch = args["min-ratio-mismatch"]
-    prob_diff          = args["prob-diff"]
+    prob_diff          = args["prob-diff"         ]
     # hard clip
     nclip_after        = args["clip-after"]
-    nclip_front        = args["clip5"]
+    nclip_front        = args["clip5"     ]
     # quality
     quality_offset     = Trimmer.get_quality_offset(args["quality-format"])
     quality_kmer       = args["quality-kmer"]
@@ -120,20 +120,21 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     min_complexity = args["min-complexity"]
 
     # feature enable/disable
-    do_check_identifier      =  args["check-identifier"]
-    do_polyG                 =  args["polyG"]
-    do_polyT                 =  args["polyT"]
-    do_polyA                 =  args["polyA"]
-    do_polyC                 =  args["polyC"]
+    do_check_identifier      =  args["check-identifier"    ]
+    do_polyG                 =  args["polyG"               ]
+    do_polyT                 =  args["polyT"               ]
+    do_polyA                 =  args["polyA"               ]
+    do_polyC                 =  args["polyC"               ]
     do_length_filtration     = !args["no-length-filtration"]
-    do_adapter_trimming      = !args["no-adapter-trim"]
+    do_adapter_trimming      = !args["no-adapter-trim"     ]
     do_consensus_calling     =  do_adapter_trimming && !args["no-consensus"]
     do_hard_clip_3_end       =  nclip_after > 0
     do_hard_clip_5_end       =  nclip_front > 0
-    do_quality_trimming      = !args["no-quality-trim"]
-    do_tail_n_trimming       = !args["no-tail-n-trim"]
+    do_quality_trimming      = !args["no-quality-trim"     ]
+    do_tail_n_trimming       = !args["no-tail-n-trim"      ]
+    do_tail_low_qual_trimming=  do_polyG || do_polyT || do_polyA || do_polyC || do_adapter_trimming
     do_max_n_filtration      =  max_N > 0
-    do_read_stats            =  args["stats"]
+    do_read_stats            =  args["stats"                       ]
     do_complexity_filtration =  args["enable-complexity-filtration"]
 
     mkpath(outdir)
@@ -226,7 +227,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
 
     #======= Trim N from the tail =======#
-    TailNTrim = do_tail_n_trimming ? quote
+    TailNTrim = do_tail_low_qual_trimming ? quote
+        tail_low_qual_trim!(r1::FqRecord)
+        tail_low_qual_trim!(r2::FqRecord)
+    end : do_tail_n_trimming ? quote
         tail_N_trim!(r1::FqRecord)
         tail_N_trim!(r2::FqRecord)
     end : nothing
@@ -328,19 +332,19 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         r1_insert_size = r1_adapter_pos - 1
         r2_insert_size = r2_adapter_pos - 1
 
-        r1_adapter_prob = probmean(r1, r1_adapter_pos, r1_adapter_pos + 15)
-        r2_adapter_prob = probmean(r2, r2_adapter_pos, r2_adapter_pos + 15)
-        r1_head_prob = probmean(r1, 1, 16)
-        r2_head_prob = probmean(r2, 1, 16)
-        r1_pe_prob = probmean(r1, r1_insert_size_pe - 15, r1_insert_size_pe)
-        r2_pe_prob = probmean(r2, r2_insert_size_pe - 15, r2_insert_size_pe)
+        r1_adapter_prob_0 = probmean(r1, r1_adapter_pos, r1_adapter_pos + 15)
+        r2_adapter_prob_0 = probmean(r2, r2_adapter_pos, r2_adapter_pos + 15)
+        r1_head_prob_0 = probmean(r1, 1, 16)
+        r2_head_prob_0 = probmean(r2, 1, 16)
+        r1_pe_prob_0 = probmean(r1, r1_insert_size_pe - 15, r1_insert_size_pe)
+        r2_pe_prob_0 = probmean(r2, r2_insert_size_pe - 15, r2_insert_size_pe)
 
-        r1_adapter_prob = max(0.75, r1_adapter_prob)
-        r2_adapter_prob = max(0.75, r2_adapter_prob)
-        r1_head_prob = max(0.75, r1_head_prob)
-        r2_head_prob = max(0.75, r2_head_prob)
-        r1_pe_prob = max(0.75, r1_pe_prob)
-        r2_pe_prob = max(0.75, r2_pe_prob)
+        r1_adapter_prob = max(0.75, r1_adapter_prob_0)
+        r2_adapter_prob = max(0.75, r2_adapter_prob_0)
+        r1_head_prob = max(0.75, r1_head_prob_0)
+        r2_head_prob = max(0.75, r2_head_prob_0)
+        r1_pe_prob = max(0.75, r1_pe_prob_0)
+        r2_pe_prob = max(0.75, r2_pe_prob_0)
 
         r1_adapter_score = @fastmath r1_adapter_nmatch * r1_adapter_prob
         r2_adapter_score = @fastmath r2_adapter_nmatch * r2_adapter_prob
@@ -357,12 +361,30 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             r12_trim = false
         end
 
+        # v2.1.0: If a r1/2 adapter is found, but the region of r2/1 is missing or its quality too low (mean prob < 0.6), skip PE check and just trim like single-end
+        if abs(r1_insert_size_real - r2_insert_size_real) > $r1_r2_diff
+            if r1_score > $trim_score_se
+                r2_probs = probmean(r2, r1_insert_size_real + 1, r1_insert_size_real + 16)
+                if r2_probs < 0.6
+                    r2_insert_size_real = r1_insert_size_real
+                    @goto trim
+                end
+            elseif r2_score > $trim_score_se
+                r1_probs = probmean(r1, r2_insert_size_real + 1, r2_insert_size_pe + 16)
+                if r1_probs < 0.6
+                    r1_insert_size_real = r2_insert_size_real
+                    @goto trim
+                end
+            end
+        end
+
         if r12_score > $trim_score
             # < 0: no adapter / pe matched
             is_true_positive = !is_false_positive(r1_insert_size, r1_insert_size_pe, length(r1.seq),
                                          r2_insert_size, r2_insert_size_pe, length(r2.seq),
                                          insert_size_diff=$pe_adapter_diff, tail_length=$tail_length)
             if is_true_positive
+                @label trim
                 @static if $do_consensus_calling
                     if r1_insert_size_decision == r2_insert_size_decision
                         pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)

@@ -52,3 +52,5 @@ julia $atria/benchmark/replicates-stats.jl replicate_*/time_benchmark_gz.df.txt
 
 julia $atria/benchmark/replicates-stats.jl replicate_*/time_benchmark.new.df.txt
 julia $atria/benchmark/replicates-stats.jl replicate_*/time_benchmark.new_gz.df.txt
+
+Rscript $atria/benchmark/time_stats_plot.R -i stats.time_benchmark.df.txt stats.time_benchmark_gz.df.txt -o time_stats_plot.html
