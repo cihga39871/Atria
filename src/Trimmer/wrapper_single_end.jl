@@ -5,7 +5,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     time_program_initializing = time()
 
-    atria_version = "v2.1.0"
+    atria_version = "v2.1.1"
 
     args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
 
@@ -240,7 +240,8 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
         end
 
         if r1_adapter_score > $trim_score
-            tail_trim!(r1::FqRecord, r1_insert_size)
+            # r1_insert_size can be -1
+            tail_trim!(r1::FqRecord, r1_insert_size < 0 ? 0 : r1_insert_size)
         end
     end : nothing
 
@@ -434,6 +435,14 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
             total_read_copied_in_loading += ncopied
 
             processing_reads_threads!(r1s, isgoods, n_reads)
+
+            #= debug
+            for i in 1:length(r1s)
+                @info i
+                read_processing!(r1s[i], 1)
+            end
+            continue
+            =#
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             n_goods = sum(isgoods_in_range)
