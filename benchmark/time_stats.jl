@@ -62,7 +62,7 @@ function get_threads(x; THREADS_STR=THREADS_STR)
     thread
 end
 
-df = CSV.File(ARGS[1], header=false) |> DataFrame!
+df = CSV.File(ARGS[1], header=false) |> DataFrame
 NUM_BASES = length(ARGS) >= 2 ? parse(Int, ARGS[2]) : 1
 
 const USERTIME_STR = "User time (seconds): "
