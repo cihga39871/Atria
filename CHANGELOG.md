@@ -1,5 +1,15 @@
 # Atria Change Log
 
+## v3.0.0
+
+- If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
+
+## v2.1.2
+
+- Parameter optimization using `atria simulate`: --trim-score-pe 19->10, --tail-length 8->12.
+
+- Development of Atria simulation methods.
+
 ## v2.1.1
 
 - Fixing wrapper_single_end.jl: cannot trim true adapter position at index of -1.

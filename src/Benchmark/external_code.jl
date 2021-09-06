@@ -28,51 +28,37 @@ if (is.na(packageDescription("plotly")[1])) install.packages("plotly")
 library(plotly, quietly = T, warn.conflicts = F)
 if (is.na(packageDescription("ggsci")[1])) install.packages("ggsci")
 library("ggsci")
+if (is.na(packageDescription("tidyverse")[1])) install.packages("tidyverse")
+library("tidyverse")
+if (is.na(packageDescription("stringr")[1])) install.packages("stringr")
+library(stringr)
 
-parser <- ArgumentParser(prog='atria peReadStatsPlot', description='Trimming performance plots with stat.tsv files')
+parser <- ArgumentParser(prog='atria statplot', description='Trimming performance plots with stat.tsv files')
 parser$add_argument('-i', '--input', metavar='STAT.TSV', type='character',
-                    required=TRUE, nargs='+',
-                    help='[REQUIRED] input stat.tsv files')
+                    nargs='+', default="auto",
+                    help='input stat.tsv files; if auto, search files ended with r12.stat.tsv')
 parser$add_argument('-o', '--outpref', metavar='PREF', type='character',
-                    default="trimmer_performance",
-                    help='Prefix of output files (default: trimmer_performance)')
-parser$add_argument('-t', '--title',
-                    default="", help = "suffix to figure title, eg. [R1] (default: nothing)")
-parser$add_argument('-l', '--legend', metavar="DIR|BASE|.",
+                    default="trimmer_accuracy",
+                    help='Prefix of output files (default: trimmer_accuracy)')
+parser$add_argument('-l', '--legend', metavar="DIR|DIR2|BASE|.",
                     default='DIR',
-                    help = 'legend name: DIR = dir name, BASE = base name, others = name (default: DIR)')
-parser$add_argument('-H', '--highlight', metavar="STRING",
-                    default="LIAN!GUN@JIAN#PAN%BA*SADKJWIDJSAPJDSLKJWQWASD",
-                    help = 'a name in legend to be highlight')
+                    help = 'legend name: DIR = dir name, BASE = base name, DIR2 = second dir name (default: DIR)')
+parser$add_argument('-a', '--adapter-length', metavar="INT",
+                    help = 'Main adapter length for stats')
+parser$add_argument('-F', '--no-format', action='store_true',
+                    help = 'Stop formatting legend names (keep ^[A-Za-z]*, first uppercase)')
 
 args <- parser$parse_args()
 
-seq_length_vlines <- function(p, x, y0 = 0, y1 = 1, showlegend = TRUE) {
-    for (xi in x) {
-        linename <- paste('Read Length:', xi)
-        p <- add_trace(
-            p, type = 'scatter', mode = 'lines',
-            x = c(xi, xi), y = c(y0, y1), line=list(color=rgb(0,0,0), dash = '2px', width = 0.5),
-            name = linename, hoverinfo = "name", hoverlabel = list(namelength=50),
-            legendgroup = "Read Length", showlegend = showlegend
-        )
+if (args$input == "auto") {
+    # search files ended with r12.stat.tsv
+    args$input <- try(system("find * -maxdepth 2 -type f | grep r12.stat.tsv", intern = TRUE))
+    if (length(args$input) == 0) {
+        stop("-i auto failed: Cannot find files ends with r12.stat.tsv under current working directory and 2-depth subdirectories.")
     }
-    p
+    writeLines("-i auto: successfully found files:")
+    writeLines(args$input)
 }
-
-legend_placeholder <- function(p) {
-    add_trace(
-        p, type = 'scatter', mode = 'markers', x = 0, y = 0, name = ' ',
-        marker=list(color=rgb(0,0,0,0))
-    )
-}
-
-yrange <- function(vec) {
-    rg = range(vec)
-    delta = (rg[2] - rg[1]) * 0.05
-    c(rg[1]-delta, rg[2]+delta)
-}
-markers = c("101", "105", "124", "104")
 
 dt = data.frame()
 args$legend = toupper(args$legend)
@@ -81,12 +67,26 @@ for (i in args$input) {
     dt_i = read.delim(i)
     if (args$legend == 'DIR'){
         dt_i_file = dirname(i)
+    } else if (args$legend == 'DIR2'){
+        dt_i_file = str_split(i, pattern = '/')[[1]][2]
     } else if (args$legend == 'BASE') {
         dt_i_file = sub(".stat.tsv$", "", basename(i))
     } else {
         dt_i_file = sub(".stat.tsv$", "", i)
     }
+
+    # format
+    if (!args$no_format) {
+        dt_i_file = paste(toupper(substr(dt_i_file, 1, 1)), substr(dt_i_file, 2, nchar(dt_i_file)), sep="")
+
+        dt_i_file = str_extract(dt_i_file, "^([A-Za-z ]*)")
+    }
+
+    # find adapter length if indicated in input path name
+    adapter_length = as.integer(str_extract(str_extract(i, "adapter_length_([0-9]+)"), "\\d+"))
+
     dt_i$file = dt_i_file
+    dt_i$adapter_length = adapter_length
     dt_i$deviation_undertrim <- -dt_i$deviation_undertrim
     dt_i <- dt_i[order(dt_i$insert_size),]
     dt = rbind(dt, dt_i)
@@ -94,138 +94,146 @@ for (i in args$input) {
 
 unique_files = unique(dt$file)
 file_count = length(unique_files)
-file_num_to_highlight = NULL
-dt$imarker = 0
-dt$idash = 0
-for (i in 1:file_count) {
-    ind_file <- dt$file == unique_files[i]
-    dt$imarker[ind_file] <- i %% 5
-    dt$idash[ind_file] <- i %% 3
 
-    if (args$highlight == unique_files[i]){
-        file_num_to_highlight = i
-    }
+dt$has_adapter <- dt$seq_length > dt$insert_size
+
+##### Full length adapter (if -a specified, else all adapter data). Stats of all error profiles.
+
+args$adapter_length <- as.integer(args$adapter_length)
+
+if (is.integer(args$adapter_length) && length(as.integer(args$adapter_length))==1 ) {
+    dt_main <- filter(dt, adapter_length == args$adapter_length)
+} else {
+    dt_main <- dt
 }
 
-# highlight
-pal_colors = pal_d3("category20")(file_count)
-if (!is.null(file_num_to_highlight)) {
-    pal_colors_replace = pal_colors[file_num_to_highlight]
-    pal_colors[file_num_to_highlight] <- pal_colors[1]
-    pal_colors[1] <- pal_colors_replace
-}
+group_dt <- dt_main %>%
+    group_by(file, has_adapter)
 
-seq_lenths = unique(dt$seq_length)
+dt_summary <- group_dt %>% summarise(
+    `Accurate Trim` = mean(precision),
+    # accuracy_1bp = mean(rate_precision_in1) - mean(precision),
+    `Over Trim = 1 bp` = mean(rate_overtrim) - mean(rate_overtrim_gt1),
+    `Under Trim = 1 bp` =  mean(rate_undertrim) - mean(rate_undertrim_gt1),
+    `Over Trim > 1 bp` = mean(rate_overtrim_gt1),
+    `Under Trim > 1 bp` = mean(rate_undertrim_gt1)
+)
 
-######## Precision
-p1 <- plot_ly(dt) %>%
+dt_summary_long <- pivot_longer(dt_summary, `Accurate Trim`:`Under Trim > 1 bp`)
+
+dt_summary_long$name <- factor(dt_summary_long$name, ordered = TRUE, levels = c("Accurate Trim", "Over Trim = 1 bp", "Under Trim = 1 bp", "Over Trim > 1 bp", "Under Trim > 1 bp") %>% rev)
+rate_colors <- pal_locuszoom("default", alpha = 0.7)(5)
+
+
+p11 <- plot_ly(dt_summary_long %>% filter(has_adapter==T),
+               type='bar', orientation = 'h',
+               colors=rate_colors,
+               y = ~file, x = ~value, color=~name,
+               legendgroup = "Statistics", showlegend=T) %>%
+    layout(xaxis = list(title = 'Accumulate Rate (With Adapter)', tickformat=".1%"),
+           yaxis = list(title = '', autorange='reversed'),
+           barmode = 'stack')
+
+p12 <- plot_ly(dt_summary_long %>% filter(has_adapter==F),
+               type='bar', orientation = 'h',
+               colors=rate_colors,
+               y = ~file, x = ~value, color=~name,
+               legendgroup = "Statistics", showlegend=F) %>%
+    layout(xaxis = list(title = 'Accumulate Rate (No Adapter)', tickformat=".1%"),
+           yaxis = list(title = '', autorange='reversed', side="left"),
+           barmode = 'stack')
+
+##### line plot: x = error rate, y = accuracy
+
+group_dt <- dt_main %>% group_by(file, has_adapter, error_rate)
+
+dt_summary <- group_dt %>% summarise(
+    `Accurate Trim` = mean(precision),
+    accuracy_1bp = mean(rate_precision_in1)
+)
+
+p21 <- plot_ly(dt_summary %>% filter(has_adapter==T)) %>%
     add_trace(
-        type = 'scatter', x = ~insert_size, y = ~precision, color = ~file, frame = ~error_rate, mode = 'lines+markers',
-        legendgroup = ~file, showlegend = TRUE, colors=pal_colors,
-        hoverlabel = list(namelength = -1), line=list(width = 1.5, opacity = 0.82, dash = ~idash),
-        marker = list(symbol = ~imarker, symbols=markers, size = 6, opacity = 0.82)
-    ) %>%
-    legend_placeholder() %>%
-    seq_length_vlines(seq_lenths, y0 = 0, y1 = 1, showlegend = TRUE) %>%
-    layout(#title = paste('Precision', args$title),
-        xaxis = list(title = 'Original Insert Size'),
-        yaxis = list(title = 'Precision', range=yrange(dt$precision))
-    )
+               mode='lines',
+               y = ~`Accurate Trim`, x = ~error_rate, color=~file,
+               legendgroup = "Trimmers", showlegend=T) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate', tickformat=".1%"),
+           xaxis = list(title = 'Error Rate (With Adapter)'))
 
-######## Rate Overtrim
-p2 <- plot_ly(dt) %>%
+p22 <- plot_ly(dt_summary %>% filter(has_adapter==F)) %>%
     add_trace(
-        type = 'scatter', x = ~insert_size, y = ~rate_overtrim, color = ~file, frame = ~error_rate, mode = 'lines+markers',
-        legendgroup = ~file, showlegend = FALSE, colors=pal_colors,
-        hoverlabel = list(namelength = -1), line=list(width = 1.5, opacity = 0.82, dash = ~idash),
-        marker = list(symbol = ~imarker, symbols=markers, size = 6, opacity = 0.82)
-    ) %>%
-    seq_length_vlines(seq_lenths, y0 = 0, y1 = 1, showlegend = FALSE) %>%
-    layout(#title = paste('Over-trim Rate', args$title),
-        xaxis = list(title = 'Original Insert Size'),
-        yaxis = list(title = 'Over-trim Rate', range=yrange(dt$rate_overtrim))
-    )
+        mode='lines',
+        y = ~`Accurate Trim`, x = ~error_rate, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate', side="left", tickformat=".1%"),
+           xaxis = list(title = 'Error Rate (No Adapter)'))
 
-######## Rate Undertrim
-p3 <- plot_ly(dt) %>%
+p31 <- plot_ly(dt_summary %>% filter(has_adapter==T)) %>%
     add_trace(
-        type = 'scatter', x = ~insert_size, y = ~rate_undertrim, color = ~file, frame = ~error_rate, mode = 'lines+markers',
-        legendgroup = ~file, showlegend = FALSE, colors=pal_colors,
-        hoverlabel = list(namelength = -1), line=list(width = 1.5, opacity = 0.82, dash = ~idash),
-        marker = list(symbol = ~imarker, symbols=markers, size = 6, opacity = 0.82)
-    ) %>%
-    seq_length_vlines(seq_lenths, y0 = 0, y1 = 1, showlegend = FALSE) %>%
-    layout(#title = paste('Under-trim Rate', args$title),
-        xaxis = list(title = 'Original Insert Size'),
-        yaxis = list(title = 'Under-trim Rate', range=yrange(dt$rate_undertrim))
-    )
+        mode='lines',
+        y = ~accuracy_1bp, x = ~error_rate, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate (Allow 1 Bp Error)', tickformat=".1%"),
+           xaxis = list(title = 'Error Rate (With Adapter)'))
 
-######## Deviation
-p4 <- plot_ly(dt) %>%
+p32 <- plot_ly(dt_summary %>% filter(has_adapter==F)) %>%
     add_trace(
-        type = 'scatter', x = ~insert_size, y = ~deviation, color = ~file, frame = ~error_rate, mode = 'lines+markers',
-        legendgroup = ~file, showlegend = TRUE, colors=pal_colors,
-        hoverlabel = list(namelength = -1), line=list(width = 1.5, opacity = 0.82, dash = ~idash),
-        marker = list(symbol = ~imarker, symbols=markers, size = 6, opacity = 0.82)
-    ) %>%
-    legend_placeholder() %>%
-    seq_length_vlines(seq_lenths, y0 = 0, y1 = max(dt$deviation), showlegend = TRUE) %>%
-    layout(
-        xaxis = list(title = 'Original Insert Size'),
-        yaxis = list(title = 'Median Deviation', range=yrange(dt$deviation))
-    )
+        mode='lines',
+        y = ~accuracy_1bp, x = ~error_rate, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate (Allow 1 Bp Error)', side="left", tickformat=".1%"),
+           xaxis = list(title = 'Error Rate (No Adapter)'))
 
-######## Deviation Over-trim
-p5 <- plot_ly(dt) %>%
+##### line plot: x = adapter length, y = accuracy
+
+group_dt <- dt %>% group_by(file, has_adapter, adapter_length)
+
+dt_summary <- group_dt %>% summarise(
+    `Accurate Trim` = mean(precision),
+    accuracy_1bp = mean(rate_precision_in1)
+)
+
+adapter_lengths <- sort(unique(dt_summary$adapter_length))
+dtick <- if (length(adapter_lengths)>1) (adapter_lengths[2] - adapter_lengths[1]) else 4
+tick0 <- min(adapter_lengths)
+
+p41 <- plot_ly(dt_summary %>% filter(has_adapter==T)) %>%
     add_trace(
-        type = 'scatter', x = ~insert_size, y = ~deviation_overtrim, color = ~file, frame = ~error_rate, mode = 'lines+markers',
-        legendgroup = ~file, showlegend = FALSE, colors=pal_colors,
-        hoverlabel = list(namelength = -1), line=list(width = 1.5, opacity = 0.82, dash = ~idash),
-        marker = list(symbol = ~imarker, symbols=markers, size = 6, opacity = 0.82)
-    ) %>%
-    seq_length_vlines(seq_lenths, y0 = 0, y1 = max(dt$deviation_overtrim), showlegend = FALSE) %>%
-    layout(
-        xaxis = list(title = 'Original Insert Size'),
-        yaxis = list(title = 'Median Deviation\n(Over-trim Portion)', range=yrange(dt$deviation_overtrim))
-    )
+        mode='lines',
+        y = ~`Accurate Trim`, x = ~adapter_length, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate', tickformat=".1%"),
+           xaxis = list(title = 'Library Adapter Length (With Adapter)', dtick = dtick, tick0 = tick0))
 
-######## Deviation Under-trim
-p6 <- plot_ly(dt) %>%
+p42 <- plot_ly(dt_summary %>% filter(has_adapter==F)) %>%
     add_trace(
-        type = 'scatter', x = ~insert_size, y = ~deviation_undertrim, color = ~file, frame = ~error_rate, mode = 'lines+markers',
-        legendgroup = ~file, showlegend = FALSE, colors=pal_colors,
-        hoverlabel = list(namelength = -1), line=list(width = 1.5, opacity = 0.82, dash = ~idash),
-        marker = list(symbol = ~imarker, symbols=markers, size = 6, opacity = 0.82)
-    ) %>%
-    seq_length_vlines(seq_lenths, y0 = 0, y1 = max(dt$deviation_undertrim), showlegend = FALSE) %>%
-    layout(
-        xaxis = list(title = 'Original Insert Size'),
-        yaxis = list(title = 'Median Deviation\n(Under-trim Portion)', range=yrange(dt$deviation_undertrim))
-    )
+        mode='lines',
+        y = ~`Accurate Trim`, x = ~adapter_length, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate', side="left", tickformat=".1%"),
+           xaxis = list(title = 'Library Adapter Length (No Adapter)', dtick = dtick, tick0 = tick0))
 
-############## integrate subplots
+p51 <- plot_ly(dt_summary %>% filter(has_adapter==T)) %>%
+    add_trace(
+        mode='lines',
+        y = ~accuracy_1bp, x = ~adapter_length, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate (Allow 1 Bp Error)', tickformat=".1%"),
+           xaxis = list(title = 'Library Adapter Length (With Adapter)', dtick = dtick, tick0 = tick0))
 
-p123 <- subplot(p1, p2, p3,
-                nrows = 3, shareX = T, shareY = T) %>%
-    animation_opts(frame = 500, transition = 0) %>%
-    animation_slider(currentvalue = list(prefix = "Error Rate = ")) %>%
-    animation_button(label = "Error Rate", hide = TRUE) %>%
-    layout(title = paste('Preciseness Benchmark', args$title))
+p52 <- plot_ly(dt_summary %>% filter(has_adapter==F)) %>%
+    add_trace(
+        mode='lines',
+        y = ~accuracy_1bp, x = ~adapter_length, color=~file,
+        legendgroup = "Trimmers", showlegend=F) %>%
+    layout(yaxis = list(title = 'Accurate Trim Rate (Allow 1 Bp Error)', side="left", tickformat=".1%"),
+           xaxis = list(title = 'Library Adapter Length (No Adapter)', dtick = dtick, tick0 = tick0))
 
-p456 <- subplot(p4, p5, p6,
-                nrows = 3, shareX = T, shareY = T) %>%
-    animation_opts(frame = 500, transition = 0) %>%
-    animation_slider(currentvalue = list(prefix = "Error Rate = ")) %>%
-    animation_button(label = "Error Rate", hide = TRUE) %>%
-    layout(title = paste('Median Deviation Benchmark', args$title))
+p_all<- subplot(p11, p12, p21, p22, p41, p42,
+                nrows = 3, shareX = F, shareY = T) %>% layout(showlegend=T)
 
-outname123 = paste0(args$outpref, '.', 'preciseness', args$title, ".html")
-outname456 = paste0(args$outpref, '.', 'deviation', args$title, ".html")
-
-htmlwidgets::saveWidget(as_widget(p123), outname123)
-htmlwidgets::saveWidget(as_widget(p456), outname456)
-
-writeLines(paste("peReadSimulatorStatsPlot: Output:", outname123))
-writeLines(paste("peReadSimulatorStatsPlot: Output:", outname456))
+outname = paste0(args$outpref, '.plots', ".html")
+htmlwidgets::saveWidget(as_widget(p_all), outname)
+writeLines(paste("atria statplot: write to", outname))
 
 """

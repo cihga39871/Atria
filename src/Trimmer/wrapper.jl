@@ -5,7 +5,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
     time_program_initializing = time()
 
-    atria_version = "v2.1.1"
+    atria_version = "v3.0.0"
 
     args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
 
@@ -390,8 +390,23 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                         pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                     end
                 end
-                r1_insert_size_decision >= 0 && tail_trim!(r1::FqRecord, r1_insert_size_decision)
-                r2_insert_size_decision >= 0 && tail_trim!(r2::FqRecord, r2_insert_size_decision)
+                # r1_insert_size_decision >= 0 && tail_trim!(r1::FqRecord, r1_insert_size_decision)
+                # r2_insert_size_decision >= 0 && tail_trim!(r2::FqRecord, r2_insert_size_decision)
+
+                # v3.0.0-dev: If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
+                r1_nremain = if r1_insert_size_decision >= 1
+                    one_bp_check(r1.seq, $adapter1, r1_insert_size_decision, 4)
+                else
+                    r1_insert_size_decision
+                end
+                r2_nremain = if r2_insert_size_decision >= 1
+                    one_bp_check(r2.seq, $adapter2, r2_insert_size_decision, 4)
+                else
+                    r1_insert_size_decision
+                end
+
+                r1_nremain >= 0 && tail_trim!(r1::FqRecord, r1_nremain)
+                r2_nremain >= 0 && tail_trim!(r2::FqRecord, r2_nremain)
 
                 @static if $do_read_stats
                     r12_trim = true

@@ -112,7 +112,7 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
             arg_type = Int64
         "--trim-score-pe"
             help = "(FOR PAIRED END) if final score [0-32] of read pair is greater than FLOAT, the reads will be trimmed."
-            default = 19.0
+            default = 10.0
             metavar = "FLOAT"
             arg_type = Float64
         "--trim-score-se"
@@ -122,7 +122,7 @@ function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
             arg_type = Float64
         "--tail-length", "-l"
             help = "(FOR PAIRED END) if the adapter is in the tail region, and insert size of pe match is smaller than this region, do not trim the read."
-            default = 8
+            default = 12
             metavar = "INT"
             arg_type = Int64
         "--stats"

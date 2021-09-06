@@ -16,7 +16,8 @@ bitwise_scan_rc,
 isbitsafe,
 insert_size_decision,
 insert_size_decision_separate,
-is_false_positive
+is_false_positive,
+one_bp_check
 #TruncSeq
 
 # NOTE:TruncSeq has some unknown accuracy problems.

@@ -1,6 +1,6 @@
 The Atria Software is licensed under the License:
 
-> Copyright (c) 2021 Jiacheng Chuan
+> Copyright (c) 2020 Jiacheng Chuan
 >
 > The Atria "Software" consists of the source code (the contents of src/ and test/), documentations (the contents of README.md, CHANGELOG.md, and docs/), and the compiled files which mean the compiled bytecode, object code, binary, or any
 > other form resulting from mechanical transformation or translation of
@@ -20,4 +20,4 @@ The Atria Software includes code from the following projects, which have their o
 - [BioSymbols.jl](https://github.com/BioJulia/BioSymbols.jl/blob/master/LICENSE) (Nucleic and amino acid primitive types in Julia) [MIT License]
 - [DataStructures.jl](https://github.com/JuliaCollections/DataStructures.jl/blob/master/License.md) [MIT License]
 - [JSON.jl](https://github.com/JuliaIO/JSON.jl/blob/master/LICENSE.md) (IO of JSON files in Julia) [MIT "Expat" License]
-- [TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl/blob/master/LICENSE.md) [MIT "Expat" License]
+

@@ -29,28 +29,28 @@ function parsing_args_simulate(args; exit_after_help = true)
             default = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
         "--seq-length", "-s"
             help = "a given sequence length; simulated sequence length might be 1 base more than the value because of simulated phasing error"
-            default = 251
+            default = 100
             arg_type = Int64
         "--insert-size-range", "-i"
             help = "range of insert size"
             nargs = '+'
             arg_type = Int64
-            default = [220:2:238; 240:251; 256:260]
+            default = [80:2:120;]
         "--subsitution-rate", "-S"
             help = "subsitution rate per base. it is random for each base. error type includs mismatch"
             nargs = '+'
             arg_type = Float64
-            default = [0.0025; 0.01; 0.02;]
+            default = [0.001:0.001:0.005;]
         "--insertion-rate", "-I"
             help = "insertion rate; number of arg should be the same as --subsitution-rate"
             nargs = '+'
             arg_type = Float64
-            default = [2e-5; 5e-5; 1e-4;]
+            default = [1.0e-5:1.0e-5:5.0e-5;]
         "--deletion-rate", "-D"
             help = "deletion rate; number of arg should be the same as --subsitution-rate"
             nargs = '+'
             arg_type = Float64
-            default = [2e-5; 5e-5; 1e-4;]
+            default = [1.0e-5:1.0e-5:5.0e-5;]
     end
     return parse_args(args, settings)
 end

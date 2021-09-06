@@ -9,7 +9,7 @@
 # Simulated from a real public sequence: SRR7243169.1
 
 
-working_dir=~/analysis/atria-benchmark/simulate
+working_dir=~/analysis/atria-benchmark/art_simulate
 
 mkdir -p $working_dir
 cd $working_dir
@@ -21,19 +21,20 @@ pigz -d genomes/TAIR10.1.fasta.gz
 
 ### simulate data
 # Download from https://sourceforge.net/projects/skewer/files/Simulator/
-cd ~/analysis/atria-benchmark/simulate/ART/art_profiler_illumina
+cd $working_dir/ART/art_profiler_illumina
 
 # download real data to generate profiles
-fastq-dump --split-files --origfmt SRR7243169.1
+fastq-dump --split-files --origfmt SRR330569.3
 # generate profiles
-./Illumina_readprofile_art profile_SRR7243169 . fastq
+./Illumina_readprofile_art profile_SRR330569 . fastq
 
 for i in `seq 1 3`
 do
     echo "Replicate $i ----------------------------------"
-    bash $atria/benchmark/simulate-run-bench.bash
+    bash $atria/benchmark/art-simulate-run-bench.bash
 done
 
+cd $working_dir
 
 julia $atria/benchmark/replicates-stats.jl replicate_*/summary.AdapterRemoval
 julia $atria/benchmark/replicates-stats.jl replicate_*/summary.Atria

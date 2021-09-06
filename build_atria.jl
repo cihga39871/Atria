@@ -15,7 +15,8 @@ function check_compatibility()
     end
 
     if !(v"1.4" <= VERSION < v"1.5")
-        @error "Performance: Julia version is not v1.4. The build might be fail. Atria built with Julia v1.5.1 is slower than Julia v1.4.2 because Atria allocates more in Julia v1.5.1."
+        @warn "Julia version is not v1.4. The build might be fail."
+        @error "Performance Notice: Atria built with Julia v1.5-1.6.1 is slower than Julia v1.4.2."
     end
 
     try
@@ -31,14 +32,18 @@ function check_compatibility()
         exit()
     end
 
-    Pkg.add("PackageCompiler")
+    # Pkg.add("PackageCompiler")
 end
 
 check_compatibility()
 
+cd(@__DIR__)
+Pkg.activate(".")
+Pkg.instantiate()
+
 using PackageCompiler
 
-cd(@__DIR__)
+
 
 ver = try
     readchomp(pipeline(`grep -m1 version Project.toml`, `grep -oE '[0-9]+.[0-9]+.[0-9]+'`))

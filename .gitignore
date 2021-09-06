@@ -11,3 +11,4 @@ tmp*/*
 .vscode/
 app*/
 app
+/atria-*

@@ -50,13 +50,13 @@ run_all_trimmer
 
 
 ##### Ensifer spp associated with Medicago whole genome sequencing
-working_dir=~/analysis/atria-benchmark/SRR7243169
-cd $working_dir
-
-r1=SRR7243169_1.fastq.gz
-r2=SRR7243169_2.fastq.gz
-a1=CTGTCTCTTATACACATCT
-a2=CTGTCTCTTATACACATCT
-bwa_ref=`pwd`/genomes/Pseudomonas.sp.Z003-0.4C.fasta
-
-run_all_trimmer
+# working_dir=~/analysis/atria-benchmark/SRR7243169
+# cd $working_dir
+#
+# r1=SRR7243169_1.fastq.gz
+# r2=SRR7243169_2.fastq.gz
+# a1=CTGTCTCTTATACACATCT
+# a2=CTGTCTCTTATACACATCT
+# bwa_ref=`pwd`/genomes/Pseudomonas.sp.Z003-0.4C.fasta
+#
+# run_all_trimmer

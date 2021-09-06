@@ -1,7 +1,7 @@
 name = "Atria"
 uuid = "226cbef3-b485-431c-85c2-d8bd8da14025"
 authors = ["Jiacheng Chuan <jiacheng_chuan@outlook.com>"]
-version = "2.1.1"
+version = "3.0.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -18,9 +18,9 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-julia = "1.4"
-BioSequences = "2.0.5"
-BioSymbols = "4.0.4"
-ArgParse = "1.1.1"
-DataStructures = "0.18.9"
-JSON = "0.21.1"
+# julia = "1.4"
+# BioSequences = "2.0.5"
+# BioSymbols = "4.0.4"
+# ArgParse = "1.1.1"
+# DataStructures = "0.18.9"
+# JSON = "0.21.1"

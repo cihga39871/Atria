@@ -5,7 +5,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     time_program_initializing = time()
 
-    atria_version = "v2.1.1"
+    atria_version = "v3.0.0"
 
     args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
 
