@@ -2,6 +2,20 @@
 
 Atria is designed to trim adapters and low-quality bases of next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree.
 
+## Features
+
+- Highly accurate Illumina adapter trimming
+- Paired-end consensus calling
+- Quality trimming
+- Poly X tail trimming
+- Hard clip 3' and 5' ends
+- N tail trimming
+- Filtering reads by the number of N bases
+- Filtering reads by length
+- Filtering reads by read complexity
+
+- Multi-threading and multi-core parallel computing
+
 ## Contents
 
 1. Installation guide
