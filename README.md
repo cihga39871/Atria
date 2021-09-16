@@ -24,8 +24,11 @@ Atria is designed to trim adapters and low-quality bases of next-generation sequ
 
    1.2 [Install from source](docs/1.2.Install_from_source.md)
 
-2. [Atria trimming methods and usages](docs/2.Atria_trimming_methods_and_usages.md)
+2. **[Atria trimming methods and usages](docs/2.Atria_trimming_methods_and_usages.md)**
 
 3. [Benchmark toolkit](docs/3.Benchmark_toolkit.md)
 
 4. [Atria development notes](docs/4.Development_notes.md)
+
+5. **[Accuracy and speed benchmark](docs/5.Accuracy_and_speed_benchmark.md)**
+
