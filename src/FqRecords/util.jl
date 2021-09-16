@@ -61,16 +61,48 @@ end
     end
 end
 
-@inline function iscomplement(a::DNA, b::DNA)
-    if a === DNA_A && b === DNA_T
-        true
-    elseif a === DNA_T && b === DNA_A
-        true
-    elseif a === DNA_C && b === DNA_G
-        true
-    elseif a === DNA_G && b === DNA_C
-        true
-    else
-        false
-    end
+const complement_table = map(0x01:0xff) do bits
+    reinterpret(DNA,
+    (bits & 0x01) << 3 | (bits & 0x08) >> 3 |
+    (bits & 0x02) << 1 | (bits & 0x04) >> 1)
 end
+
+@inline function BioSequences.complement(nt::DNA)  # FASTER than native one
+    bits = BioSequences.compatbits(nt)
+    @inbounds complement_table[bits]
+end
+
+@inline function iscomplement(a::DNA, b::DNA)
+    complement(a) === b
+end
+
+
+# codes modified from Julia Base
+
+function write_no_lock(s::IOStream, b::UInt8)
+    Int(ccall(:ios_putc, Cint, (Cint, Ptr{Cvoid}), b, s.ios))
+end
+function write_no_lock(s::IOStream, a::Vector{UInt8})
+    GC.@preserve a unsafe_write_no_lock(s, pointer(a), UInt64(sizeof(a)))
+end
+# """
+#     unsafe_write_no_lock(io::IO, ref, nbytes::UInt)
+#
+# Copy `nbytes` from `ref` (converted to a pointer) into the `IO` object.
+#
+# It is recommended that subtypes `T<:IO` override the following method signature
+# to provide more efficient implementations:
+# `unsafe_write_no_lock(s::T, p::Ptr{UInt8}, n::UInt)`
+# """
+# function unsafe_write_no_lock(s::IO, p::Ptr{UInt8}, n::UInt)
+#     written::Int = 0
+#     for i = 1:n
+#         written += write(s, unsafe_load(p, i))
+#     end
+#     return written
+# end
+function unsafe_write_no_lock(s::IOStream, p::Ptr{UInt8}, nb::UInt)
+    Int(ccall(:ios_write, Csize_t, (Ptr{Cvoid}, Ptr{Cvoid}, Csize_t), s.ios, p, nb))
+end
+
+# write(io::AbstractPipe, byte::UInt8) = write(Base.pipe_writer(io)::IO, byte)

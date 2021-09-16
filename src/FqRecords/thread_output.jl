@@ -47,27 +47,26 @@ Empty `out`, and then convert `r` to it continuously. If empty sequence, write a
     empty!(out)
     if isempty(r.seq::LongDNASeq)
         append!(out, r.id::Vector{UInt8})
-        push!(out, 0x0a)  # \n
-        push!(out, 0x4e)  # N
-        push!(out, 0x0a)
+        append!(out, [0x0a, 0x4e, 0x0a])  # \nN\n
+        # push!(out, 0x0a)  # \n
+        # push!(out, 0x4e)  # N
+        # push!(out, 0x0a)
         append!(out, r.des::Vector{UInt8})
-        push!(out, 0x0a)
-        push!(out, 0x21)  # !
-        push!(out, 0x0a)
+        append!(out, [0x0a, 0x21, 0x0a])  # \n!\n
+        # push!(out, 0x0a)
+        # push!(out, 0x21)  # !
+        # push!(out, 0x0a)
     else
         append!(out, r.id::Vector{UInt8})
         push!(out, 0x0a)
         length_out = length(out)
         r_seq = r.seq
         length_r = length(r_seq)
+
         resize!(out, length_out + length_r)
         @inbounds for (i, base) in enumerate(r_seq)
             out[length_out + i] = UInt8(convert(Char, base))
         end
-        # slow:
-        # for i in r.seq
-        #     push!(out, UInt8(convert(Char, i)))
-        # end
         push!(out, 0x0a)
         append!(out, r.des::Vector{UInt8})
         push!(out, 0x0a)
@@ -76,6 +75,7 @@ Empty `out`, and then convert `r` to it continuously. If empty sequence, write a
     end
     nothing
 end
+
 
 """
     FqRecord2StringVec!(outrs::Vector{Vector{UInt8}}, rs::Vector{FqRecord}, stop::Int)
@@ -114,14 +114,14 @@ end
 
 @inline function writebytes(io::IOStream, outrs::Vector{Vector{UInt8}}, stop::Int)::Nothing
     @inbounds for i in 1:stop
-        write(io, outrs[i])
+        write_no_lock(io, outrs[i])
     end
     nothing
 end
 @inline function writebytes(io::IOStream, outrs::Vector{Vector{UInt8}}, filters::SubArray{Bool,1,Array{Bool,1},Tuple{UnitRange{Int64}},true})::Nothing
     @inbounds for (i, val) in enumerate(filters)
         if val
-            write(io, outrs[i])
+            write_no_lock(io, outrs[i])
         end
     end
     nothing

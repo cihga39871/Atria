@@ -44,11 +44,15 @@ Pkg.instantiate()
 using PackageCompiler
 
 
-
-ver = try
-    readchomp(pipeline(`grep -m1 version Project.toml`, `grep -oE '[0-9]+.[0-9]+.[0-9]+'`))
-catch
-    "atria"
+ver = "atria"
+if isfile("Project.toml")
+    for i in readlines("Project.toml")
+        if occursin(r"^version", i)
+            ind = findall("\"", i)
+            global ver = i[ind[1].start + 1 : ind[2].start - 1]
+            break
+        end
+    end
 end
 
 if length(ARGS) == 1

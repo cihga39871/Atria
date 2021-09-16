@@ -1,5 +1,13 @@
 # Atria Change Log
 
+## v3.0.1
+
+- Avoid to lock `IOStream` when write fastq in thread_output.jl: replace `write(::IOStream, ...)` with `write_no_lock(::IOStream, ...)`. It is slightly faster.
+
+- Speed optimization for consensus calling: overwrite `BioSequences.complement(::DNA)` (1.40X), and define `iscomplement(::DNA, ::DNA)` (1.79X).
+
+- Other minor parallel implementations.
+
 ## v3.0.0
 
 - If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.

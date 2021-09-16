@@ -1,26 +1,12 @@
 #!/usr/bin/env julia
 
-@info "Atria without precompilation. It will take a while."
+@info "Atria without precompilation. It may take a while to precompile."
 
-using ArgParse
-using BioSymbols
-using BioSequences
-using Printf
-using JSON
-using Statistics
-using DelimitedFiles
-using Distributed
-using Base.Threads
-using Logging
-using DataStructures
-using Markdown
+using Pkg
 
-include(joinpath("BioBits", "BioBits.jl"))
-include(joinpath("FqRecords", "FqRecords.jl"))
-include(joinpath("Trimmer", "Trimmer.jl"))
+Pkg.activate(dirname(@__DIR__))
+Pkg.instantiate()
 
-using .BioBits
-using .FqRecords
-using .Trimmer
+include(joinpath(@__DIR__, "Atria.jl"))
 
-Trimmer.julia_wrapper_atria(ARGS::Vector{String})
+Atria.julia_main()

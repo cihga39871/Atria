@@ -97,7 +97,7 @@ end
     nmatch = 0
     ncheck = 0
     @inbounds while ncheck < max_check && ia <= max_a
-        if a[ia] == b[ib]
+        if a[ia] === b[ib]
             nmatch += 1
         end
         ncheck +=1

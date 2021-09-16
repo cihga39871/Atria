@@ -78,10 +78,10 @@ function load_fqs_threads!(
         i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks2, i_task)
     end
-    vr1s_stops = map(fetch, tasks)
-    n_r1 = append_loop!(r1s, vr1s, vr1s_stops; remove_first_n=n_remove_r1)
-    vr2s_stops = map(fetch, tasks2)
-    n_r2 = append_loop!(r2s, vr2s, vr2s_stops; remove_first_n=n_remove_r2)
+    # vr1s_stops = map(fetch, tasks)
+    n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
+    # vr2s_stops = map(fetch, tasks2)
+    n_r2 = append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
 
     (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
 
@@ -149,8 +149,8 @@ function load_fqs_threads!(
         push!(tasks, i_task)
     end
 
-    vr1s_stops = map(fetch, tasks)
-    n_r1 = append_loop!(r1s, vr1s, vr1s_stops; remove_first_n=n_remove_r1)
+    # vr1s_stops = map(fetch, tasks)
+    n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
 
     (n_r1 == 0) && throw(error("Read nothing from R1!"))
 
@@ -256,10 +256,10 @@ function load_fqs_threads!(
         i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1)
         push!(tasks2, i_task)
     end
-    vr1s_stops = map(fetch, tasks)
-    n_r1 = append_loop!(r1s, vr1s, vr1s_stops; remove_first_n=n_remove_r1)
-    vr2s_stops = map(fetch, tasks2)
-    n_r2 = append_loop!(r2s, vr2s, vr2s_stops; remove_first_n=n_remove_r2)
+    # vr1s_stops = map(fetch, tasks)
+    n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
+    # vr2s_stops = map(fetch, tasks2)
+    n_r2 = append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
 
     (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
 
@@ -329,8 +329,8 @@ function load_fqs_threads!(
         push!(tasks, i_task)
     end
 
-    vr1s_stops = map(fetch, tasks)
-    n_r1 = append_loop!(r1s, vr1s, vr1s_stops; remove_first_n=n_remove_r1)
+    # vr1s_stops = map(fetch, tasks)
+    n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
 
     (n_r1 == 0) && throw(error("Read nothing from R1!"))
 
@@ -822,19 +822,20 @@ Caution: This function does not check whether the last fastq read is truncated o
 end
 
 """
-    append_loop!(rs::Vector{FqRecord}, vrs::Vector{Vector{FqRecord}}, vrs_stops::Vector{Int64}; remove_first_n::Int64=0)
+    append_loop!(rs::Vector{FqRecord}, vrs::Vector{Vector{FqRecord}}, vrs_stops_tasks::Vector{Task}; remove_first_n::Int64=0)
 
-- `vrs_stops`: it can have less elements than `vrs`. In this way, remaining elements in `vrs` are ignored.
+- `vrs_stops_tasks`: it can have less elements than `vrs`. In this way, remaining elements in `vrs` are ignored.
 
 - `remove_first_n`: remove the first NUM elements of `rs` before append.
 """
-@inline function append_loop!(rs::Vector{FqRecord}, vrs, vrs_stops::Vector{Int64}; remove_first_n::Int64=0)::Int64
+@inline function append_loop!(rs::Vector{FqRecord}, vrs, vrs_stops_tasks::Vector{Task}; remove_first_n::Int64=0)::Int64
 
     if remove_first_n != 0
         deleteat!(rs, 1:remove_first_n)
     end
 
-    for (i, stop) in enumerate(vrs_stops)  # cannot enumerate vrs. because vrs_stop might have less elements (especially read till end of file)
+    for (i, task) in enumerate(vrs_stops_tasks)  # cannot enumerate vrs. because vrs_stop might have less elements (especially read till end of file)
+        stop = fetch(task)
         append!(rs, @inbounds view(vrs[i], 1:stop))
         # append!(rs, vec[1:vrs_stops[i]])
     end

@@ -5,7 +5,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     time_program_initializing = time()
 
-    atria_version = "v3.0.0"
+    atria_version = "v3.0.1"
 
     args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
 
@@ -445,17 +445,19 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
             =#
 
             isgoods_in_range = view(isgoods, 1:n_reads)
-            n_goods = sum(isgoods_in_range)
-            total_n_goods += n_goods
-            total_n_reads += n_reads
-
+            task_sum = Threads.@spawn sum(isgoods_in_range)
             write_fqs_threads!(
                 io1out::IO,
                 outr1s::Vector{Vector{UInt8}},
                 r1s::Vector{FqRecord},
                 n_reads::Int, isgoods_in_range)
 
-            @info "Cycle $nbatch: processed $n_reads reads ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
+            n_goods = fetch(task_sum)
+            total_n_goods += n_goods
+            total_n_reads += n_reads
+
+            # @info "Cycle $nbatch: processed $n_reads reads ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
+            @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
         end
 
         while !eof(io1::IO)

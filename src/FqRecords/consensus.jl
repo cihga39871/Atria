@@ -72,8 +72,8 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert
     @inbounds while r1_i <= r1_end
         a = r1_seq[r1_i]
         b = r2_seq[r2_i]
-        if !((a | b) in (DNA_W, DNA_S)) # not complement
-        # if !iscomplement(a, b) # not complement
+        # if !((a | b) in (DNA_W, DNA_S)) # not complement
+        if !iscomplement(a, b) # not complement
             a_prob = r1_prob[r1_i]
             b_prob = r2_prob[r2_i]
             if a_prob - b_prob > prob_diff
