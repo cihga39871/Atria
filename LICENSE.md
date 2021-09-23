@@ -10,7 +10,7 @@ The Atria Software is licensed under the MIT License:
 
 The Atria Software includes code from the following projects, which have their own licenses:
 
-- [The Julia Language](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
+- [The Julia Language](https://github.com/JuliaLang/julia/blob/master/LICENSE.md) [MIT License]
 - [ArgParse.jl](https://github.com/carlobaldassi/ArgParse.jl/blob/master/LICENSE.md) (Parsing command-line arguments in Julia) [MIT License]
 - [BioSequences.jl](https://github.com/BioJulia/BioSequences.jl/blob/master/LICENSE) (Biological sequences in Julia) [MIT License]
 - [BioSymbols.jl](https://github.com/BioJulia/BioSymbols.jl/blob/master/LICENSE) (Nucleic and amino acid primitive types in Julia) [MIT License]
