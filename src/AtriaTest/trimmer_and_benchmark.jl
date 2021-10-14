@@ -36,10 +36,12 @@
             run(`pigz --keep peReadSimulated.R1.randtrim.fastq`)
             run(`pigz --keep peReadSimulated.R2.randtrim.fastq`)
             julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "gz", "--check-identifier"])
+            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "gz"])
 
             run(`pbzip2 peReadSimulated.R1.randtrim.fastq`)
             run(`pbzip2 peReadSimulated.R2.randtrim.fastq`)
             julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "bz2", "--check-identifier"])
+            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "bz2"])
         end
 
 

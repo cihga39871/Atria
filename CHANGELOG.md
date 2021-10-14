@@ -1,5 +1,9 @@
 # Atria Change Log
 
+## v3.0.2
+
+- Fix uncompressed_size1 not defined on gzipped single-end input (#2).
+
 ## v3.0.1
 
 - Avoid to lock `IOStream` when write fastq in thread_output.jl: replace `write(::IOStream, ...)` with `write_no_lock(::IOStream, ...)`. It is slightly faster.
