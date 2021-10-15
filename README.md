@@ -2,6 +2,9 @@
 
 Atria is designed to trim adapters and low-quality bases of next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree.
 
+If you use Atria, please cite the paper:
+> Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021  https://doi.org/10.46471/gigabyte.31
+
 ## Features
 
 - Highly accurate Illumina adapter trimming
@@ -31,4 +34,3 @@ Atria is designed to trim adapters and low-quality bases of next-generation sequ
 4. [Atria development notes](docs/4.Development_notes.md)
 
 5. **[Accuracy and speed benchmark](docs/5.Accuracy_and_speed_benchmark.md)**
-
