@@ -18,6 +18,7 @@ If you use Atria, please cite the paper:
 - Filtering reads by read complexity
 
 - Multi-threading and multi-core parallel computing
+- Faster and faster, even for compressed fastq files.
 
 ## Contents
 
