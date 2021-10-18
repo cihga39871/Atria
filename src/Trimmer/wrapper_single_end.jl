@@ -5,9 +5,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     time_program_initializing = time()
 
-    atria_version = "v3.0.2"
-
-    args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
+    args = parsing_args(ARGS; exit_after_help = exit_after_help)
 
     if args === nothing  # ARGS is ["-h"]
         return 0
@@ -418,14 +416,12 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
                 (n_r1, r1s, ncopied) = load_fqs_threads!(io1, in1bytes, vr1s, r1s; remove_first_n = n_reads, njobs=njobs)
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
-                will_eof1 = false
                 (n_r1, r1s, in1bytes_nremain, ncopied) = load_fqs_threads!(
                     io1,
                     in1bytes,
                     in1bytes_nremain,
                     vr1s,
                     r1s;
-                    will_eof1 = will_eof1,
                     remove_first_n = n_reads,
                     njobs = njobs
                 )

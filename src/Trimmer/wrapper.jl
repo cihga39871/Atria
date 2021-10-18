@@ -5,9 +5,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
     time_program_initializing = time()
 
-    atria_version = "v3.0.2"
-
-    args = parsing_args(ARGS; ver = atria_version, exit_after_help = exit_after_help)
+    args = parsing_args(ARGS; exit_after_help = exit_after_help)
 
     if args === nothing  # ARGS is ["-h"]
         return 0
@@ -572,8 +570,15 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
         # setting chunk size for file 1 and file2
         chunk_size1, chunk_size2, uncompressed_size1, uncompressed_size2 = chunk_sizes(file1, file2, max_chunk_size)
-        resize!(in1bytes, chunk_size1)
-        resize!(in2bytes, chunk_size2)
+        if (uncompressed_size1 == -1 || uncompressed_size1 == -1) && (isingzip || isinbzip2)
+            # file is gzip but uncompressed size not known.
+            # do not resize. just assume R1/2 is the original data, which means insert size is evenly-distributed.
+            chunk_size1 = length(in1bytes)
+            chunk_size2 = length(in2bytes)
+        else
+            resize!(in1bytes, chunk_size1)
+            resize!(in2bytes, chunk_size2)
+        end
 
         # clear common variables
         empty!(r1s)

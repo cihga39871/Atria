@@ -1,10 +1,13 @@
 
 const atria_markdown_help_text = md"""
-# Atria
+# Atria $atria_version
 
 An ultra-fast and accurate adapter and quality trimming software designed for paired-end sequencing data.
 
-Author: Jiacheng (Eric) Chuan
+If you use Atria, please cite
+> Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31
+
+Github: https://github.com/cihga39871/Atria
 
 ## Usage
 

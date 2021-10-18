@@ -28,10 +28,13 @@ using ..BioBits.BioSymbols
 using ..BioBits.BioSequences
 using ..FqRecords
 
+using Pkg
+const atria_version = @eval($(string("v", Pkg.project().version)))
+
+include("markdown_help.jl")
 include("args.jl")
 include("thread_trim.jl")
 include("wrapper.jl")
 include("wrapper_single_end.jl")
-include("markdown_help.jl")
 
 end

@@ -1,5 +1,11 @@
 # Atria Change Log
 
+## v3.0.3
+
+- Fix v3.0.2: `will_eof` should be true when unknown.
+
+- Do not resize chunk sizes before cycle 1 when inputs are compressed and cannot determine uncompressed sizes. Just assume data are not trimmed before.
+
 ## v3.0.2
 
 - Fix uncompressed_size1 not defined on gzipped single-end input (#2).

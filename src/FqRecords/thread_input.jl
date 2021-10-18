@@ -172,6 +172,8 @@ end
 
 The interface to load FASTQ files. Design for general `IO` that does not support seeking.
 
+- `will_eof1`: if not known, set to true.
+
 Caution: `r[12]s` might be new elements, or in-place modified ones, depending on the necessity to copy.
 
 Return `n_r1, n_r2, r1s, r2s, in1bytes_nremain, in2bytes_nremain, ncopyed`.
@@ -279,6 +281,8 @@ end
         njobs = 2                     ) where N
 
 The interface to load FASTQ files. Design for general `IO` that does not support seeking.
+
+- `will_eof1`: if not known, set to true.
 
 Caution: `r[12]s` might be new elements, or in-place modified ones, depending on the necessity to copy.
 

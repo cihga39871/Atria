@@ -1,9 +1,9 @@
-function parsing_args(args::Vector; ver::String="x.x.x", exit_after_help = true)
+function parsing_args(args::Vector; exit_after_help = true)
     settings = ArgParseSettings(
         prog = "atria",
-        description = "Atria $ver",
-        version = ver, add_version = true, exit_after_help = exit_after_help,
-        epilog = """Author: Jiacheng (Eric) Chuan\n"""
+        description = "Atria $atria_version",
+        version = atria_version, add_version = true, exit_after_help = exit_after_help,
+        epilog = """Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31\n"""
     )
     @add_arg_table! settings begin
         "--threads", "-t"
