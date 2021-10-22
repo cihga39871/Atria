@@ -143,6 +143,22 @@ run_seqpurge() {
         -qcut 0 -min_len 0 -summary "$folder"/seqpurge.summary -threads $num_threads
 }
 
+run_cutadapt() {
+	local num_threads=1
+	if [[ $1 ]]; then
+		num_threads=$1
+	fi
+	local OUTDIR="Cutadapt"
+	output=$OUTDIR/out.cutadapt
+	if [[ $r1 = *gz ]]; then
+		local isgz=.gz
+	else
+		local isgz=
+	fi
+    mkdir -p "$OUTDIR"
+    /usr/bin/time -v cutadapt -j $num_threads -a $a1 -A $a2 -o $output.R1.fq$isgz -p $output.R2.fq$isgz $r1 $r2
+}
+
 run_atropos() {
 	# Atropos 1.1.29 with Python 3.8.5
 	local num_threads=1

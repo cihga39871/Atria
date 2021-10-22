@@ -42,6 +42,7 @@ run_trimmomatic 16 2>> stderr.log
 run_fastp 1 2>> stderr.log
 run_atropos 16 2>> stderr.log
 run_seqpurge 1 2>> stderr.log
+run_cutadapt 16 2>> stderr.log
 
 pigz -d SeqPurge/*gz
 
@@ -61,6 +62,8 @@ do
         julia -L $atria/src/Atria.jl -e "Atria.Benchmark.julia_wrapper_readstat(ARGS)" $i/*.f*q &
     fi
 done
+
+# atria readstat Cutadapt/out.cutadapt.R*.fq
 
 ps -x | grep -c "Atria.Benchmark.julia_wrapper_readstat"
 
