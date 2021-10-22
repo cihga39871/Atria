@@ -570,7 +570,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
         # setting chunk size for file 1 and file2
         chunk_size1, chunk_size2, uncompressed_size1, uncompressed_size2 = chunk_sizes(file1, file2, max_chunk_size)
-        if (uncompressed_size1 == -1 || uncompressed_size1 == -1) && (isingzip || isinbzip2)
+        if (uncompressed_size1 == -1 || uncompressed_size2 == -1) && (isingzip || isinbzip2)
             # file is gzip but uncompressed size not known.
             # do not resize. just assume R1/2 is the original data, which means insert size is evenly-distributed.
             chunk_size1 = length(in1bytes)
