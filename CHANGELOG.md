@@ -4,6 +4,8 @@
 
 - New feature: `--detect-adapter` for adapter determination.
 
+- Fix: when input is an empty compressed fastq, atria exit with error because `read_chunks!(::IO, ...)` should return 4 elements, but returned 2.
+
 ## v3.0.3
 
 - Fix v3.0.2: `will_eof` should be true when unknown.

@@ -24,6 +24,7 @@ using JSON
 using DataStructures
 using Printf
 using Markdown
+using PrettyTables
 
 using ..BioBits
 using ..BioBits.BioSymbols

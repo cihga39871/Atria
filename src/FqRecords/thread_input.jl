@@ -152,7 +152,7 @@ function load_fqs_threads!(
     # vr1s_stops = map(fetch, tasks)
     n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
 
-    (n_r1 == 0) && throw(error("Read nothing from R1!"))
+    (n_r1 == 0) && throw(error("Empty input from $io1"))
 
     return n_r1, r1s, ncopyed
 end
@@ -336,7 +336,7 @@ function load_fqs_threads!(
     # vr1s_stops = map(fetch, tasks)
     n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
 
-    (n_r1 == 0) && throw(error("Read nothing from R1!"))
+    (n_r1 == 0) && throw(error("Empty input from $io1"))
 
     return n_r1, r1s, in1bytes_nremain, ncopyed
 end
@@ -641,7 +641,7 @@ function read_chunks!(io::IO, inbytes::Vector{UInt8}, nremain::Integer, nthread:
     end
 
     if nbytes == 0x0000000000000000  # read nothing (already end of file before read)
-        return UInt64[0x0000000000000001], UInt64[0x0000000000000000]
+        return UInt64[0x0000000000000001], UInt64[0x0000000000000000], inbytes, 0
     end
     # Split inbytes into different sections for parallel computing:
     # We set up idx_search_step to get the rough length of section;

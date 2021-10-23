@@ -31,8 +31,6 @@ function julia_wrapper_detect_adapter(ARGS::Vector{String}; exit_after_help = tr
     append!(args["read1"], args["read2"])
 
     for file1 in args["read1"]
-        # filenum = 1
-        time_file_initializing = time()
 
         #===== file names =====#
 
@@ -60,12 +58,9 @@ function julia_wrapper_detect_adapter(ARGS::Vector{String}; exit_after_help = tr
         in1bytes_nremain = 0
 
         #================== File processing ====================#
-        time_file_initializing = time() - time_file_initializing
-        time_read_processing = time()
 
         # the first cycle to generate compiled code?
         function cycle_wrapper_detect_adapter()
-            n_r1_before = length(r1s) - n_reads
 
             if typeof(io1) <: IOStream  # not compressed
                 (n_r1, r1s, ncopied) = load_fqs_threads!(io1, in1bytes, vr1s, r1s; remove_first_n = n_reads, njobs=njobs)
@@ -81,9 +76,15 @@ function julia_wrapper_detect_adapter(ARGS::Vector{String}; exit_after_help = tr
                 )
             end
 
-            top3 = detect_adapter_threads!(r1s)
+            top5, headers = detect_adapter_threads!(r1s)
 
-            @info "adapter detection in $file1 ($n_r1 reads)" top_3_adapters=top3
+            adapter_frequency = top5[1,2] / n_r1
+            if adapter_frequency < 0.0004
+                @info "$file1:\n No adapter detected in the first $n_r1 reads."
+            else
+                adapter_table = pretty_table(String, top5, header = headers)
+                @info "$file1:\n Top 5 adapters detected in the first $n_r1 reads:\n$adapter_table"
+            end
         end
 
         cycle_wrapper_detect_adapter()

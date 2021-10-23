@@ -77,6 +77,9 @@ function detect_adapter_threads!(rs::Vector{FqRecord}; kmer_tolerance::Int = 2, 
         push!(identities, base_match)
     end
     df = [adapters counts identities]
-    df_sorted = sortslices(df, dims=1, lt=(x,y)->!isless(x[2],y[2]))
-    top3 = ["Adapter" "Occurance" "Identity"; df_sorted[1:3,:]]
+    perm = sortperm(counts, rev=true)
+    df_sorted = df[perm,:]
+    top5 = df_sorted[1:5,:]
+    headers = ["Adapter", "Occurance", "Identity"]
+    return top5, headers
 end
