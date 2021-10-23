@@ -86,6 +86,9 @@ struct SeqHeadSet
     end
 end
 
+function BioSequences.LongDNASeq(s::SeqHeadSet)
+    LongDNASeq([s.s64.a], 1:16, false)
+end
 
 """
     TruncSeq(::T, seq::LongDNASeq) where T <: Union{UInt8, UInt16, UInt32, UInt64}

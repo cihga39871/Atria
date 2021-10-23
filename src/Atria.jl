@@ -50,7 +50,9 @@ function julia_main()
         if ARGS[1] in ["prog", "p"]
             println(help_programs)
         elseif ARGS[1] in ("atria", "Atria")
-            if "-R" in ARGS || "--read2" in ARGS
+            if "--detect-adapter" in ARGS
+                julia_wrapper_detect_adapter(ARGS[2:end])
+            elseif "-R" in ARGS || "--read2" in ARGS
                 # paired-end
                 julia_wrapper_atria(ARGS[2:end]::Vector{String})
             else
@@ -67,7 +69,9 @@ function julia_main()
         elseif ARGS[1] == "test"
             test_atria()
         else
-            if "-R" in ARGS || "--read2" in ARGS
+            if "--detect-adapter" in ARGS
+                julia_wrapper_detect_adapter(ARGS)
+            elseif "-R" in ARGS || "--read2" in ARGS
                 # paired-end
                 julia_wrapper_atria(ARGS::Vector{String})
             else

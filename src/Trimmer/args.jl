@@ -45,6 +45,9 @@ function parsing_args(args::Vector; exit_after_help = true)
         "--check-identifier"
             help = "check whether the identifiers of r1 and r2 are the same"
             action = :store_true
+        "--detect-adapter"
+            help = "detect possible adapters for each sample only"
+            action = :store_true
     end
 
     add_arg_group!(settings, "poly X tail trimming")

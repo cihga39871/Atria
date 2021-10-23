@@ -1,5 +1,9 @@
 # Atria Change Log
 
+## v3.1.0
+
+- New feature: `--detect-adapter` for adapter determination.
+
 ## v3.0.3
 
 - Fix v3.0.2: `will_eof` should be true when unknown.

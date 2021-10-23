@@ -43,6 +43,8 @@ Atria integrated several trimming and read filtration methods. It does the follo
 
    - disable: `--no-adapter-trim`
 
+   - if adapter is unknown, use `--detect-adapter`.
+
 3. **Paired-end Consensus Calling**: the overlapped regions of read pairs are checked and corrected. *It is available only when input files are paired-end and Adapter Trimming is on.*
    - disable: `--no-consensus`
 
