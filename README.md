@@ -7,6 +7,7 @@ If you use Atria, please cite the paper:
 
 ## Features
 
+- FAST, even for compressed fastqs
 - Highly accurate Illumina adapter trimming
 - Paired-end consensus calling
 - Quality trimming
@@ -16,9 +17,6 @@ If you use Atria, please cite the paper:
 - Filtering reads by the number of N bases
 - Filtering reads by length
 - Filtering reads by read complexity
-
-- Multi-threading and multi-core parallel computing
-- Faster and faster, even for compressed fastq files.
 
 ## Contents
 
