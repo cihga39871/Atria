@@ -65,7 +65,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             help = "enable trimming poly C tails"
             action = :store_true
         "--poly-length"
-            help = "the minimin length of poly X"
+            help = "the minimum length of poly X"
             default = 10
             arg_type = Int64
         "--poly-mismatch-per-16mer"
