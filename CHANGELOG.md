@@ -2,7 +2,7 @@
 
 ## V3.1.1
 
-- Fix: when report encode error, do not show the whole chunk of data, just report the previous and current lines.
+- Fix: when reporting an encode error, report the previous and current lines instead of the whole chunk of data.
 
 ## v3.1.0
 
