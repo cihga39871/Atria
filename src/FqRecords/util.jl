@@ -57,7 +57,40 @@ end
 @noinline function BioSequences.throw_encode_error(A::BioSequences.Alphabet, src::AbstractArray{UInt8}, soff::Integer)
     for i in 1:div(64, BioSequences.bits_per_symbol(A))
         sym = src[soff+i-1]
-        BioSequences.stringbyte(A, sym) & 0x80 == 0x80 && error("Cannot encode $sym ('$(Char(sym))') in $(String(copy(src))) to $A. Is the input file valid? Does the disk have bad sections?")
+        if BioSequences.stringbyte(A, sym) & 0x80 == 0x80
+            # find the context around the error: one previous line and the current line
+            nsrc = length(src)
+            context_start = soff + i - 2
+            context_previous_line = true
+            context_end = soff + i
+            while context_start > 1
+                char = src[context_start]
+                if char == 0x0a # \n
+                    if context_previous_line
+                        context_previous_line = false
+                    else
+                        context_start += 1
+                        break
+                    end
+                elseif soff - context_start > 300 + 300 * !context_previous_line
+                    break
+                end
+                context_start -= 1
+            end
+            while context_end < nsrc
+                char = src[context_end]
+                if char == 0x0a # \n or \r
+                    context_end -= 1
+                    break
+                elseif context_end - soff > 100
+                    break
+                end
+                context_end += 1
+            end
+            context = String(copy(src[context_start:context_end]))
+        
+            error("Cannot encode $sym ('$(Char(sym))') to $A. Is the input file valid? Does the disk have bad sections? The error is found in the following context:\n\n$context\n")
+        end
     end
 end
 

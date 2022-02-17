@@ -1,5 +1,9 @@
 # Atria Change Log
 
+## V3.1.1
+
+- Fix: when report encode error, do not show the whole chunk of data, just report the previous and current lines.
+
 ## v3.1.0
 
 - New feature: `--detect-adapter` for adapter determination.
