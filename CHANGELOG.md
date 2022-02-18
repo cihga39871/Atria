@@ -8,7 +8,7 @@
 
 - New feature: `--detect-adapter` for adapter determination.
 
-- Fix: when input is an empty compressed fastq, atria exit with error because `read_chunks!(::IO, ...)` should return 4 elements, but returned 2.
+- Fix: when input is an empty compressed fastq, atria exits with error because `read_chunks!(::IO, ...)` should return 4 elements, but returned 2.
 
 ## v3.0.3
 
@@ -30,7 +30,7 @@
 
 ## v3.0.0
 
-- If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
+- If users choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
 
 ## v2.1.2
 
