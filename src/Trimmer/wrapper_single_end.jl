@@ -306,7 +306,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
             outcompress = "BZIP2"
         end
 
-        outfile1 = joinpath(outdir, replace(basename(file1), r"(fastq$|fq$|[^.]*)(\.gz)?$"i => s"atria.\1", count=1))
+        outfile1 = joinpath(outdir, replace(basename(file1), r"(fastq$|fq$|[^.]*)(\.gz|\.bz2)?$"i => s"atria.\1", count=1))
         if outcompress == "GZIP"
             outfile1 *= ".gz"
         elseif outcompress == "BZIP2"

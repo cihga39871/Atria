@@ -1,6 +1,10 @@
 # Atria Change Log
 
-## V3.1.1
+## v3.1.2
+
+- Fix: optimize output file names if ending with .bz2.
+
+## v3.1.1
 
 - Fix: when reporting an encode error, report the previous and current lines instead of the whole chunk of data.
 
