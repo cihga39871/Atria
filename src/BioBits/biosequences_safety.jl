@@ -28,53 +28,53 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 =#
 
+# """
+# Re-write BioSequences._orphan! because original function allocates a vector each time but that is not necessary in Atria.
+
+# Caution: it is only tested in Atria, and may not be compatible in all BioSequences functions!
+
+# Caution: after using it, r1, r2 and r1_seq_rc, r2_seq_rc can only run `pe_consensus!` once! If run twice, unexpected things can happen.
+# """
+# function BioSequences._orphan!(seq::BioSequences.LongSequence{A},
+# 		 size::Integer = length(seq)) where {A}
+
+#     j, r = BioSequences.bitindex(seq, 1)
+# 	new_seq_data_len = BioSequences.seq_data_len(A, size)
+
+#     @inbounds if !isempty(seq) && new_seq_data_len > 0
+#         x = seq.data[j] >> r
+#         m = BioSequences.index(BioSequences.bitindex(seq, lastindex(seq))) - j + 1
+#         l = min(new_seq_data_len, m)
+#         @simd for i in 1:l-1
+#             y = seq.data[j + i]
+#             seq.data[i] = x | y << (64 - r)
+#             x = y >> (r & 63)
+#         end
+#         if m <= l
+#             seq.data[l] = x
+#         else
+#             y = seq.data[j + l]
+#             seq.data[l] = x | y << (64 - r)
+#         end
+#     end
+# 	resize!(seq.data, new_seq_data_len)
+#     seq.part = 1:size
+#     seq.shared = false
+#     return seq
+# end
+
+
 """
-Re-write BioSequences._orphan! because original function allocates a vector each time but that is not necessary in Atria.
-
-Caution: it is only tested in Atria, and may not be compatible in all BioSequences functions!
-
-Caution: after using it, r1, r2 and r1_seq_rc, r2_seq_rc can only run `pe_consensus!` once! If run twice, unexpected things can happen.
-"""
-function BioSequences._orphan!(seq::BioSequences.LongSequence{A},
-		 size::Integer = length(seq)) where {A}
-
-    j, r = BioSequences.bitindex(seq, 1)
-	new_seq_data_len = BioSequences.seq_data_len(A, size)
-
-    @inbounds if !isempty(seq) && new_seq_data_len > 0
-        x = seq.data[j] >> r
-        m = BioSequences.index(BioSequences.bitindex(seq, lastindex(seq))) - j + 1
-        l = min(new_seq_data_len, m)
-        @simd for i in 1:l-1
-            y = seq.data[j + i]
-            seq.data[i] = x | y << (64 - r)
-            x = y >> (r & 63)
-        end
-        if m <= l
-            seq.data[l] = x
-        else
-            y = seq.data[j + l]
-            seq.data[l] = x | y << (64 - r)
-        end
-    end
-	resize!(seq.data, new_seq_data_len)
-    seq.part = 1:size
-    seq.shared = false
-    return seq
-end
-
-
-"""
-    bitsafe!(seq::LongDNASeq)
+    bitsafe!(seq::LongDNA{4})
 
 Resize `seq.data` to allow loading a pointer `Ptr{UInt64}` safely at the end of `seq`.
 
-Caution: bitsafe LongDNASeq may not be compatible on all BioSequences functions, especially those do in-place replacement.
+Caution: bitsafe LongDNA{4} may not be compatible on all BioSequences functions, especially those do in-place replacement.
 """
-@inline function bitsafe!(seq::LongDNASeq)::LongDNASeq
-    BioSequences.orphan!(seq)
+@inline function bitsafe!(seq::LongDNA{4})::LongDNA{4}
+    # BioSequences.orphan!(seq)
     seq_data = seq.data
-    idx_stop = seq.part.stop
+    idx_stop = seq.len
     @inbounds if idx_stop == 0
         resize!(seq_data, 1)
         seq_data[1] = 0x0000000000000000
@@ -103,9 +103,9 @@ Caution: bitsafe LongDNASeq may not be compatible on all BioSequences functions,
 end
 
 
-function isbitsafe(seq::LongDNASeq)::Bool
+function isbitsafe(seq::LongDNA{4})::Bool
     seq_data = seq.data
-    idx_stop = seq.part.stop
+    idx_stop = seq.len
     idx_data_stop_safe = cld(idx_stop, 16) + 1
     length_seq_data = length(seq_data)
     length_seq_data >= idx_data_stop_safe || return false
@@ -116,41 +116,63 @@ function isbitsafe(seq::LongDNASeq)::Bool
 end
 
 """
-    resize!(seq::LongDNASeq, size::Int[, force::Bool=false])
+    resize!(seq::LongDNA{4}, size::Int[, force::Bool=false])
 
 It overrides `resize!` in BioSequences. Resize a biological sequence `seq`, to a given `size`. The underlying data is bitsafe.
 """
-@inline function Base.resize!(seq::LongDNASeq, size::Int, force::Bool=false)::LongDNASeq
-    size < 0 && throw(ArgumentError("resize sequence to a length < 0"))
-    size_before = length(seq)
-    BioSequences.orphan!(seq, size, force || seq.part.start != 1)
-    seq_data = seq.data
-    seq.part = 1:size
-    @inbounds if size == 0
-        resize!(seq_data, 1)
-        seq_data[1] = 0x0000000000000000
+@inline function Base.resize!(seq::LongSequence{A}, size::Int, force::Bool=false) where {A}
+    if size < 0
+        throw(ArgumentError("size must be non-negative"))
+    else
+        idx_data_stop = BioSequences.seq_data_len(A, size)
+        if force | (idx_data_stop + 1 > BioSequences.seq_data_len(A, length(seq)))
+            resize!(seq.data, idx_data_stop + 1)
+        end
+
+        # mask overflow bits to 0
+        @inbounds if seq.len % 16 != 0
+            seq.data[idx_data_stop] &= ~(0xffffffffffffffff << (seq.len % 16 * 4))
+        end
+
+        for i in idx_data_stop + 1 : length(seq.data)
+            seq.data[i] = 0x0000000000000000
+        end
+
+        seq.len = size
         return seq
     end
-    if size_before >= size
-        bitsafe!(seq)
-    else
-        idx_data_stop_before = cld(size_before, 16)
 
-        # mask original overflow bits to 0
-        @inbounds if idx_data_stop_before % 16 != 0
-            seq_data[idx_data_stop_before] &= ~(0xffffffffffffffff << (size_before % 16 * 4))
-        end
 
-        idx_data_stop_safe = cld(size, 16) + 1
-        resize!(seq_data, idx_data_stop_safe)
-        @inbounds for i in idx_data_stop_before+1:idx_data_stop_safe
-            seq_data[i] = 0x0000000000000000
-        end
-    end
-    seq
+    # size < 0 && throw(ArgumentError("resize sequence to a length < 0"))
+    # size_before = length(seq)
+    # BioSequences.orphan!(seq, size, force || seq.part.start != 1)
+    # seq_data = seq.data
+    # seq.part = 1:size
+    # @inbounds if size == 0
+    #     resize!(seq_data, 1)
+    #     seq_data[1] = 0x0000000000000000
+    #     return seq
+    # end
+    # if size_before >= size
+    #     bitsafe!(seq)
+    # else
+    #     idx_data_stop_before = cld(size_before, 16)
+
+    #     # mask original overflow bits to 0
+    #     @inbounds if idx_data_stop_before % 16 != 0
+    #         seq_data[idx_data_stop_before] &= ~(0xffffffffffffffff << (size_before % 16 * 4))
+    #     end
+
+    #     idx_data_stop_safe = cld(size, 16) + 1
+    #     resize!(seq_data, idx_data_stop_safe)
+    #     @inbounds for i in idx_data_stop_before+1:idx_data_stop_safe
+    #         seq_data[i] = 0x0000000000000000
+    #     end
+    # end
+    # seq
 end
 
-function BioSequences.reverse_complement!(seq::LongDNASeq)
+function BioSequences.reverse_complement!(seq::LongDNA{4})
     # is_seq_bitsafe = isbitsafe(seq)
 
     bitsafe!(seq)

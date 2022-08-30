@@ -10,7 +10,6 @@ module Atria
 # using DelimitedFiles
 # using Distributed
 # using Base.Threads
-# using TimerOutputs
 # using Logging
 # using DataStructures
 # using Markdown

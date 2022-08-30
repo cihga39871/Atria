@@ -11,12 +11,11 @@
 
     seq = dna"ANATATATATATATGGANNNNATATATNNNGGGG"
 
-    @test typeof(seq) === LongDNASeq
+    @test typeof(seq) === LongDNA{4}
     @test typeof(seq) === LongSequence{DNAAlphabet{4}}
 
     @test typeof(seq.data) === Array{UInt64,1}
-    @test typeof(seq.part) === UnitRange{Int64}
-    @test typeof(seq.shared) === Bool
+    @test typeof(seq.len) === UInt
 
     @test seq.data == UInt64[0x44818181818181f1,
                              0x44fff818181ffff1,

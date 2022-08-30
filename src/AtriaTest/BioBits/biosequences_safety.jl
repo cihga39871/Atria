@@ -3,7 +3,7 @@
     @testset "bitsafe" begin
         s1 = dna""
         s2 = dna"NASTTGGTTATCNNNN"
-        s3 = LongDNASeq([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142],1:40,false)
+        s3 = LongDNA{4}([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142], UInt(40))
 
         bitsafe!(s1)
         @test length(s1) == 0
@@ -20,16 +20,16 @@
     end
 
     @testset "bitsafe resize" begin
-        s3 = LongDNASeq([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142],1:40,false)
+        s3 = LongDNA{4}([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142], UInt(40))
         resize!(s3, 5)
         @test isbitsafe(s3)
 
-        s3 = LongDNASeq([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142],1:40,false)
+        s3 = LongDNA{4}([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142], UInt(40))
         resize!(s3, 100)
         @test length(s3.data) == 8
         @test isbitsafe(s3)
 
-        s3 = LongDNASeq([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142],1:40,false)
+        s3 = LongDNA{4}([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142], UInt(40))
 
         s3 = s3[4:36]
         resize!(s3, 40)
@@ -37,7 +37,7 @@
     end
 
     @testset "bitsafe reverse complement" begin
-        s3 = LongDNASeq([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142],1:40,false)
+        s3 = LongDNA{4}([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142], UInt(40))
         s3_rc = reverse_complement(s3)
         true_s3_rc_data = [0x00000ff042814821,
                            0x8241284242814821,

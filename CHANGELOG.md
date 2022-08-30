@@ -1,5 +1,11 @@
 # Atria Change Log
 
+## Compatible with Julia v1.8
+
+- Name changed: `LongDNASeq` -> `LongDNA{4}`
+- `LongDNASeq` Field changed: `part`, `shared` are removed. `len::UInt` added.
+- Construction method changed: `LongDNA{4}([0x4214824181422181],1:40,false)` -> `LongDNA{4}([0x4214824181422181],UInt(40))`
+
 ## v3.1.2
 
 - Fix: optimize output file names if ending with .bz2.
