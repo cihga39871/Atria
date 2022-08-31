@@ -8,11 +8,11 @@
         bitsafe!(s1)
         @test length(s1) == 0
         @test length(s1.data) == 1
-        @test s1.data[1] == 0x0
+        # @test s1.data[1] == 0x0
 
         bitsafe!(s2)
         @test s2.data[1] == 0xffff28188448861f
-        @test s2.data[2] == 0x0
+        @test length(s2.data) == 2
 
         @test !isbitsafe(s3)
         @test isbitsafe(s1)
@@ -30,10 +30,12 @@
         @test isbitsafe(s3)
 
         s3 = LongDNA{4}([0x4214824181422181, 0x0ff0000084128142, 0x0000000084128142], UInt(40))
-
         s3 = s3[4:36]
         resize!(s3, 40)
-        @test s3.data == [0x1424214824181422, 0x1420ff0000084128, 0x0000000000000008, 0x0000000000000000]
+        @test s3.data[1] == 0x1424214824181422
+        @test s3.data[2] == 0x1420ff0000084128
+        @test s3.data[3] |  0xfffffffffffffff0 == 0xfffffffffffffff8
+        @test length(s3.data) == 4
     end
 
     @testset "bitsafe reverse complement" begin
@@ -43,15 +45,20 @@
                            0x8241284242814821,
                            0x0000000081844281,
                            0x0000000000000000]
-        @test s3_rc.data == true_s3_rc_data
+        @test s3_rc.data[1] == 0x00000ff042814821
+        @test s3_rc.data[2] == 0x8241284242814821
+        @test s3_rc.data[3] |  0xffffffff00000000 == 0xffffffff81844281
 
         bitsafe!(s3)
         s3_rc = reverse_complement(s3)
-        @test s3_rc.data == true_s3_rc_data
+        @test s3_rc.data[1] == 0x00000ff042814821
+        @test s3_rc.data[2] == 0x8241284242814821
+        @test s3_rc.data[3] |  0xffffffff00000000 == 0xffffffff81844281
+        @test length(s3.data) == 4
 
         s4 = s3[17:25]
-        s4_rc = reverse_complement(s4)
-        @test s4_rc.data == [0x0000000428148210, 0x0000000000000000]
+        s4_rc = reverse_complement!(s4)
+        @test s4_rc.data[1] |  0xfffffff000000000 == 0xfffffff428148210
+        @test length(s4.data) == 2
     end
-    true
 end

@@ -1,6 +1,6 @@
 # Atria Change Log
 
-## Compatible with Julia v1.8
+## Compatible with Julia v1.8 and BioSequences v3.1.0
 
 - Name changed: `LongDNASeq` -> `LongDNA{4}`
 - `LongDNASeq` Field changed: `part`, `shared` are removed. `len::UInt` added.

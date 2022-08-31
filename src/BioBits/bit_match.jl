@@ -2,21 +2,21 @@
 
 
 """
-    bitwise_scan(seq_head_set::SeqHeadSet, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
+    bitwise_scan(seq_head_set::SeqHeadSet, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
 
-    bitwise_scan(a::LongDNASeq, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
+    bitwise_scan(a::LongDNA{4}, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
 
 The fastest scaning method. It is robust when matching tail of b.
 
- - `a::LongDNASeq`: it will be convert to `SeqHeadSet`, and then match to `b`.
+ - `a::LongDNA{4}`: it will be convert to `SeqHeadSet`, and then match to `b`.
 
- - `b::LongDNASeq`: the sequence to match from `from` to `until`.
+ - `b::LongDNA{4}`: the sequence to match from `from` to `until`.
 
  - `until::Int64`: scan until this index of `b`. It does not guarantee the bases after it are encoded as 0000. To guarantee this, subset `b` and then call `bitsafe!(b_subset)`.
 """
-@inline function bitwise_scan(seq_head_set::SeqHeadSet, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
+@inline function bitwise_scan(seq_head_set::SeqHeadSet, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
     bp = get_pointer(0x0000000000000000, b)
-    stop = b.part.stop
+    stop = b.len % Int64
     stop_fullseq = get_unsafe_index_of_last_bitseq(0x0000000000000000, stop)
     ptr_from = (from - 1) ÷ 2
     ptr_stop = (stop - 1) ÷ 2
@@ -59,7 +59,7 @@ The fastest scaning method. It is robust when matching tail of b.
     return (best_idx, best_ncompatible)
 end
 
-@inline bitwise_scan(a::LongDNASeq, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807) = bitwise_scan(SeqHeadSet(a), b, from, allowed_mismatch; until = until)
+@inline bitwise_scan(a::LongDNA{4}, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807) = bitwise_scan(SeqHeadSet(a), b, from, allowed_mismatch; until = until)
 
 # internal for bitwise_scan!
 for T in (UInt8, UInt16, UInt32, UInt64)
@@ -89,11 +89,11 @@ end
 end
 
 """
-    bitwise_scan_rc!(rc_dest::LongDNASeq, a, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
+    bitwise_scan_rc!(rc_dest::LongDNA{4}, a, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
 
 The fastest scaning method. It is robust when matching tail of b.
 
- - `a::Union{LongDNASeq,SeqHeadSet}`: it will be convert to `SeqHeadSet`, and then match to the reverse-complementary `b`.
+ - `a::Union{LongDNA{4},SeqHeadSet}`: it will be convert to `SeqHeadSet`, and then match to the reverse-complementary `b`.
 
  - `from::Int64`: after computing the reverse complement of `b` (`b_rc`), the index of `b_rc` to search from.
 
@@ -101,7 +101,7 @@ The fastest scaning method. It is robust when matching tail of b.
 
 Note: the reverse complement process is `bitsafe!`.
 """
-@inline function bitwise_scan_rc!(rc_dest::LongDNASeq, a, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
+@inline function bitwise_scan_rc!(rc_dest::LongDNA{4}, a, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
     copy!(rc_dest, b)
     b_rc = reverse_complement!(rc_dest)
     best_idx_rc, best_ncompatible = bitwise_scan(a, b_rc, from, allowed_mismatch; until = until)
@@ -111,11 +111,11 @@ Note: the reverse complement process is `bitsafe!`.
 end
 
 """
-    bitwise_scan_rc(a, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
+    bitwise_scan_rc(a, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
 
 The fastest scaning method. It is robust when matching tail of b.
 
-- `a::Union{LongDNASeq,SeqHeadSet}`: it will be convert to `SeqHeadSet`, and then match to the reverse-complementary `b`.
+- `a::Union{LongDNA{4},SeqHeadSet}`: it will be convert to `SeqHeadSet`, and then match to the reverse-complementary `b`.
 
 - `from::Int64`: after computing the reverse complement of `b` (`b_rc`), the index of `b_rc` to search from.
 
@@ -123,33 +123,33 @@ The fastest scaning method. It is robust when matching tail of b.
 
 Note: the reverse complement process is `bitsafe!`.
 """
-@inline function bitwise_scan_rc(a, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
-    rc_dest = LongDNASeq()
+@inline function bitwise_scan_rc(a, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
+    rc_dest = LongDNA{4}()
     bitwise_scan_rc!(rc_dest, a, b, from, allowed_mismatch; until = until)
 end
 
 
 """
-    bitwise_scan(trunc_seq::TruncSeq, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
+    bitwise_scan(trunc_seq::TruncSeq, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
 
-    bitwise_scan(a::LongDNASeq, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
+    bitwise_scan(a::LongDNA{4}, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
 
 > Caution: `TruncSeq` version of `bitwise_scan` is still under development and it is not mature.
 
 The fastest scaning method. It is robust when matching tail of b.
 
- - `a::LongDNASeq`: it will be convert to `TruncSeq{UInt64}`, and then match to `b`.
+ - `a::LongDNA{4}`: it will be convert to `TruncSeq{UInt64}`, and then match to `b`.
 
- - `b::LongDNASeq`: the sequence to match from `from` to `until`.
+ - `b::LongDNA{4}`: the sequence to match from `from` to `until`.
 
  - `until::Int64`: scan until this index of `b`. It does not guarantee the bases after it are encoded as 0000. To guarantee this, subset `b` and then call `bitsafe!(b_subset)`.
 """
 function bitwise_scan end
 
 for T in (UInt8, UInt16, UInt32, UInt64)
-@eval @inline function bitwise_scan(trunc_seq::TruncSeq{$T}, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
+@eval @inline function bitwise_scan(trunc_seq::TruncSeq{$T}, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
     bp = get_pointer(0x0000000000000000, b)
-    stop = b.part.stop
+    stop = b.len % Int64
     ptr_from = (from - 1) ÷ 2
     ptr_stop = (stop - 1) ÷ 2
 
@@ -200,10 +200,3 @@ for T in (UInt8, UInt16, UInt32, UInt64)
     return (best_idx, best_ncompatible)
 end
 end
-
-# @inline bitwise_scan(a::LongDNASeq, b::LongDNASeq, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807) = bitwise_scan(TruncSeq{UInt64}(a), b, from, allowed_mismatch; until = until)
-
-# trunc_seq = BioBits.TruncSeq(typemin(UInt64), dna"GGGGGGGGGGGGGGGGGGGGGGGGG")
-
-# @benchmark bitwise_scan(seq_head_set, b, 1, 2)
-# @benchmark bitwise_scan(trunc_seq, b, 1, 2)

@@ -38,7 +38,7 @@ end
 end
 
 """
-    SeqHead(::T, seq::LongDNASeq) where T <: Union{UInt8, UInt16, UInt32, UInt64}
+    SeqHead(::T, seq::LongDNA{4}) where T <: Union{UInt8, UInt16, UInt32, UInt64}
 
 # Fields
 
@@ -48,15 +48,15 @@ end
 
 # Argument
 
- - `seq::LongDNASeq`: the seq has to be `bitsafe!`.
+ - `seq::LongDNA{4}`: the seq has to be `bitsafe!`.
 """
-function SeqHead(::T, seq::LongDNASeq) where T <: Union{UInt8, UInt16, UInt32}
+function SeqHead(::T, seq::LongDNA{4}) where T <: Union{UInt8, UInt16, UInt32}
     bit = seq.data[1]
     a = unsafe_trunc(T, bit)
     b = unsafe_trunc(T, bit >> 4)
     SeqHead{T}(a, b)
 end
-function SeqHead(::UInt64, seq::LongDNASeq)
+function SeqHead(::UInt64, seq::LongDNA{4})
     p = pointer(seq.data)
     a = unsafe_load(p)
     if length(seq) > 0
@@ -68,7 +68,7 @@ function SeqHead(::UInt64, seq::LongDNASeq)
     SeqHead{UInt64}(a, b)
 end
 for T in (UInt8, UInt16, UInt32, UInt64)
-    @eval @inline SeqHead{$T}(seq::LongDNASeq) = SeqHead($(typemin(T)), seq)
+    @eval @inline SeqHead{$T}(seq::LongDNA{4}) = SeqHead($(typemin(T)), seq)
 end
 
 
@@ -77,7 +77,7 @@ struct SeqHeadSet
     s32::SeqHead{UInt32}
     s16::SeqHead{UInt16}
     s8::SeqHead{UInt8}
-    function SeqHeadSet(seq::LongDNASeq)
+    function SeqHeadSet(seq::LongDNA{4})
         s64 = SeqHead{UInt64}(seq)
         s32 = SeqHead{UInt32}(seq)
         s16 = SeqHead{UInt16}(seq)
@@ -86,12 +86,12 @@ struct SeqHeadSet
     end
 end
 
-function BioSequences.LongDNASeq(s::SeqHeadSet)
-    LongDNASeq([s.s64.a], 1:16, false)
+function BioSequences.LongDNA{4}(s::SeqHeadSet)
+    LongDNA{4}([s.s64.a], 16)
 end
 
 """
-    TruncSeq(::T, seq::LongDNASeq) where T <: Union{UInt8, UInt16, UInt32, UInt64}
+    TruncSeq(::T, seq::LongDNA{4}) where T <: Union{UInt8, UInt16, UInt32, UInt64}
 
 # Fields
 
@@ -103,7 +103,7 @@ end
 
 # Argument
 
- - `seq::LongDNASeq`: the seq has to be `bitsafe!`.
+ - `seq::LongDNA{4}`: the seq has to be `bitsafe!`.
 """
 struct TruncSeq{T}
     a::T
@@ -119,7 +119,7 @@ for T in (UInt8, UInt16, UInt32, UInt64)
 end
 
 for T in (UInt8, UInt16, UInt32)
-@eval @inline function TruncSeq(::$T, seq::LongDNASeq)
+@eval @inline function TruncSeq(::$T, seq::LongDNA{4})
     bit = seq.data[1] #|> N2gap
     a = unsafe_trunc($T, bit)
     b = unsafe_trunc($T, bit >> 4)
@@ -127,7 +127,7 @@ for T in (UInt8, UInt16, UInt32)
     TruncSeq{T}(a, b, a1)
 end
 end
-function TruncSeq(::UInt64, seq::LongDNASeq)
+function TruncSeq(::UInt64, seq::LongDNA{4})
     p = pointer(seq.data)
     a = unsafe_load(p) #|> N2gap
     c = unsafe_load(p+1) #|> N2gap
@@ -143,23 +143,23 @@ end
 
 
 for T in (UInt8, UInt16, UInt32, UInt64)
-    @eval @inline TruncSeq{$T}(seq::LongDNASeq) = TruncSeq($(typemin(T)), seq)
+    @eval @inline TruncSeq{$T}(seq::LongDNA{4}) = TruncSeq($(typemin(T)), seq)
 end
 
 """
-    get_pointer(::T, seq::LongDNASeq) where T <: {UInt8, UInt16, UInt32, UInt64}
+    get_pointer(::T, seq::LongDNA{4}) where T <: {UInt8, UInt16, UInt32, UInt64}
 """
-@inline get_pointer(::UInt64, seq::LongDNASeq) = pointer(seq.data)
+@inline get_pointer(::UInt64, seq::LongDNA{4}) = pointer(seq.data)
 for T in (UInt8, UInt16, UInt32)
-    @eval @inline get_pointer(::$T, seq::LongDNASeq) =
+    @eval @inline get_pointer(::$T, seq::LongDNA{4}) =
         Core.bitcast($(Ptr{T}), pointer(seq.data))
 end
 
 
 """
-    get_unsafe_index_of_last_bitseq(::T, seq::LongDNASeq)
-    get_unsafe_index_of_last_bitseq(::T, seq.part::UnitRange{Int64})
-    get_unsafe_index_of_last_bitseq(::T, seq.part.stop::Int64)
+    get_unsafe_index_of_last_bitseq(::T, seq::LongDNA{4})
+    get_unsafe_index_of_last_bitseq(::T, seq.len::Int64)
+    get_unsafe_index_of_last_bitseq(::T, seq.len::UInt64)
 
  - `::T` is one of UInt8, UInt16, UInt32, UInt64.
 
@@ -168,23 +168,23 @@ Get the index of the last full-long bitseq. It is unsafe because the returned in
 function get_unsafe_index_of_last_bitseq end
 
 for T in (UInt8, UInt16, UInt32, UInt64)
-    @eval @inline get_unsafe_index_of_last_bitseq(::$T, seq::LongDNASeq) =
-        seq.part.stop - $(sizeof(T) * 2 - 2)
-    @eval @inline get_unsafe_index_of_last_bitseq(::$T, seq_part::UnitRange{Int64}) =
-        seq_part.stop - $(sizeof(T) * 2 - 2)
-    @eval @inline get_unsafe_index_of_last_bitseq(::$T, seq_part_stop::Int64) =
-        seq_part_stop - $(sizeof(T) * 2 - 2)
+    @eval @inline get_unsafe_index_of_last_bitseq(::$T, seq::LongDNA{4}) =
+        (seq.len % Int64) - $(sizeof(T) * 2 - 2)
+    @eval @inline get_unsafe_index_of_last_bitseq(::$T, seq_len::Int64) =
+        seq_len - $(sizeof(T) * 2 - 2)
+    @eval @inline get_unsafe_index_of_last_bitseq(::$T, seq_len::UInt64) =
+        (seq_len % Int64) - $(sizeof(T) * 2 - 2)
 end
 
 """
     unsafe_bitseq(seq_data_ptr::Ptr{T}, idx::Int) => bitseq
     unsafe_bitseq(seq_data_ptr::Ptr{T}, idx::Int, max_idx::Int) => bitseq, num_base_extracted
 
- - `seq_data_ptr::Ptr{T}`: the pointer to `(seq::LongDNASeq).data`. `Ptr{T}` can be converted to `Ptr` of `UInt8`, `UInt16`, `UInt32`, or `UInt64`.
+ - `seq_data_ptr::Ptr{T}`: the pointer to `(seq::LongDNA{4}).data`. `Ptr{T}` can be converted to `Ptr` of `UInt8`, `UInt16`, `UInt32`, or `UInt64`.
 
- - `idx`: nucleotide index of `(seq::LongDNASeq).data`. It is not adjusted from `(seq::LongDNASeq).part.start`.
+ - `idx`: nucleotide index of `(seq::LongDNA{4}).data`.
 
- - `max_idx`: should be equal to `(seq::LongDNASeq).part.stop`. Change bits after it to 0. It does not mask bits if `max_idx` < `(seq::LongDNASeq).part.stop`, but affects num_base_extracted.
+ - `max_idx`: should be equal to `(seq::LongDNA{4}).len`. Change bits after it to 0. It does not mask bits if `max_idx` < `(seq::LongDNA{4}).len`, but affects num_base_extracted.
 
 # Caution
 
