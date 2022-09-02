@@ -1,5 +1,5 @@
 
-@noinline function test_bit_match()
+@testset "bit match" begin
     a = dna"ACCCGGTCAGTACGTCAGTACGCAGTAGTGTA" |> bitsafe!
     b = dna"NNNACCCGGTCAGTACGTCAGTACGCAGTAGTGTA" |> bitsafe!
     c = dna"NNNNACCCGGTCAGTACGTCAGTACGCAGTAGTGTA" |> bitsafe!

@@ -21,7 +21,7 @@ function fqreadrecord(s::IO; quality_offset=33)::FqRecord
     # 0x0a is \n
     # do not compatible with \r\n
     id = readuntil(s, 0x0a, keep=false)::Vector{UInt8}
-    seq = LongDNASeq(readuntil(s, 0x0a, keep=false)::Vector{UInt8})::LongDNASeq
+    seq = LongDNA{4}(readuntil(s, 0x0a, keep=false)::Vector{UInt8})::LongDNA{4}
     des = readuntil(s, 0x0a, keep=false)::Vector{UInt8}
     qual = readuntil(s, 0x0a, keep=false)::Vector{UInt8}
     # nqual = length(qual::Vector{UInt8})::Int64
@@ -54,7 +54,7 @@ end
 
 
 function fqwriterecord(io::IO, r::FqRecord)
-    if isempty(r.seq::LongDNASeq)
+    if isempty(r.seq::LongDNA{4})
         write(io, r.id::Vector{UInt8})
         write(io, '\n')
         write(io, 'N')
@@ -66,7 +66,7 @@ function fqwriterecord(io::IO, r::FqRecord)
     else
         write(io, r.id::Vector{UInt8})
         write(io, '\n')
-        print(io, r.seq::LongDNASeq) # no write method for LongDNASeq
+        print(io, r.seq::LongDNA{4}) # no write method for LongDNA{4}
         write(io, '\n')
         write(io, r.des::Vector{UInt8})
         write(io, '\n')

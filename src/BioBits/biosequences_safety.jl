@@ -68,8 +68,8 @@ Caution: bitsafe LongDNA{4} may not be compatible on all BioSequences functions,
 @inline function bitsafe!(seq::LongDNA{4})
     if !unsafe_isbitsafe(seq)
         resize!(seq.data, cld(seq.len, 16) + 1)
-        unsafe_extra_bits_to_zeros!(seq)
     end
+    unsafe_extra_bits_to_zeros!(seq)
     seq
 end
 

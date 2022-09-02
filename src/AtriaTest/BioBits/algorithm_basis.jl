@@ -1,5 +1,5 @@
 
-@noinline function test_algorithm_basis()
+@testset "algorithm_basis" begin
 
     @test UInt === UInt64
     @test Int === Int64

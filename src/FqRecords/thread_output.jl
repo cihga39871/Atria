@@ -45,7 +45,7 @@ Empty `out`, and then convert `r` to it continuously. If empty sequence, write a
 @inline function FqRecord2StringVec!(out::Vector{UInt8}, r::FqRecord)::Nothing
     # out = Base.StringVector(0)
     empty!(out)
-    if isempty(r.seq::LongDNASeq)
+    if isempty(r.seq::LongDNA{4})
         append!(out, r.id::Vector{UInt8})
         append!(out, [0x0a, 0x4e, 0x0a])  # \nN\n
         # push!(out, 0x0a)  # \n

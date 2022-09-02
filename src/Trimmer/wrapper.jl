@@ -87,8 +87,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     # N
     max_N                    = args["max-n"                  ]
     # adapter
-    adapter1                 = LongDNASeq(args["adapter1"]) |> bitsafe!
-    adapter2                 = LongDNASeq(args["adapter2"]) |> bitsafe!
+    adapter1                 = LongDNA{4}(args["adapter1"]) |> bitsafe!
+    adapter2                 = LongDNA{4}(args["adapter2"]) |> bitsafe!
     adapter1_seqheadset      = SeqHeadSet(adapter1)
     adapter2_seqheadset      = SeqHeadSet(adapter2)
     # NOTE: TruncSeq has some unknown accuracy problems.
@@ -139,8 +139,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
 
     #================== Main function and common variables ====================#
-    r1_seq_rc_threads = [LongDNASeq() for _ in 1:nthread]
-    r2_seq_rc_threads = [LongDNASeq() for _ in 1:nthread]
+    r1_seq_rc_threads = [LongDNA{4}() for _ in 1:nthread]
+    r2_seq_rc_threads = [LongDNA{4}() for _ in 1:nthread]
 
 
     #======= Check identifier =======#
@@ -269,6 +269,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
     #======= adapter trimming =======#
     AdapterTrim = do_adapter_trimming ? quote
+        # rx_seq_rc is not initialized by this rx
         r1_seq_rc = $r1_seq_rc_threads[thread_id]
         r2_seq_rc = $r2_seq_rc_threads[thread_id]
 
@@ -279,6 +280,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         r1_seqheadset = SeqHeadSet(r1.seq)
         extra_tolerance = max(r1_adapter_nmatch, r2_adapter_nmatch) < $kmer_n_match
 
+        # rx_seq_rc is replaced with reverse complement of rx.seq
         r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc!(r1_seq_rc, r2_seqheadset, r1.seq, 1, $kmer_tolerance + extra_tolerance)
         r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc!(r2_seq_rc, r1_seqheadset, r2.seq, 1, $kmer_tolerance + extra_tolerance)
 

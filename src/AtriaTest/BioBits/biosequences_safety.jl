@@ -1,5 +1,5 @@
 
-@noinline function test_biosequences_safety()
+@testset "biosequences safety" begin
     @testset "bitsafe" begin
         s1 = dna""
         s2 = dna"NASTTGGTTATCNNNN"

@@ -23,15 +23,13 @@ using .Atria.Trimmer
 using .Atria.Benchmark
 =#
 
-include(joinpath("BioBits", "runtests.jl"))
-include(joinpath("FqRecords", "runtests.jl"))
-include("trimmer_and_benchmark.jl")
+
 
 @noinline function test_atria()
     @testset "Atria" begin
-        @test test_biobits()
-        @test test_fqrecords()
-        @test test_trimmer_and_benchmark()
+        include(joinpath("BioBits", "runtests.jl"))
+        include(joinpath("FqRecords", "runtests.jl"))
+        include("trimmer_and_benchmark.jl")
     end
     true
 end

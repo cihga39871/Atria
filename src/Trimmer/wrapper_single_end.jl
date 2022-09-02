@@ -86,7 +86,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     # N
     max_N                    =  args["max-n"                 ]
     # adapter
-    adapter1                 = LongDNASeq(args["adapter1"]) |> bitsafe!
+    adapter1                 = LongDNA{4}(args["adapter1"]) |> bitsafe!
     adapter1_seqheadset      = SeqHeadSet(adapter1)
     # NOTE: TruncSeq has some unknown accuracy problems.
     kmer_tolerance           = args["kmer-tolerance"          ]

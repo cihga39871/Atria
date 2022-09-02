@@ -1,5 +1,5 @@
 
-function Base.copy(r::FqRecord)
+@inline function Base.copy(r::FqRecord)
     id = Vector{UInt8}(undef, length(r.id))
     des = Vector{UInt8}(undef, length(r.des))
     qual = Vector{UInt8}(undef, length(r.qual))
@@ -25,12 +25,12 @@ end
     unsafe_copyto!(dest, 1, src, src_offset, N)
 end
 
-@inline function safe_copyto!(dest::LongDNASeq, src::Vector{UInt8}, src_offset, N)
+@inline function safe_copyto!(dest::LongDNA{4}, src::Vector{UInt8}, src_offset, N)
     resize!(dest, N)
     # BioSequences.encode_chunks!(dest, 1, src, src_offset, N)
     copyto!(dest, 1, src, src_offset, N)
 end
-@inline function safe_copyto!(dest::LongDNASeq, src::Vector{UInt8})
+@inline function safe_copyto!(dest::LongDNA{4}, src::Vector{UInt8})
     copy!(dest, src)
 end
 

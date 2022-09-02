@@ -94,19 +94,10 @@ end
     end
 end
 
-const complement_table = map(0x01:0xff) do bits
-    reinterpret(DNA,
-    (bits & 0x01) << 3 | (bits & 0x08) >> 3 |
-    (bits & 0x02) << 1 | (bits & 0x04) >> 1)
-end
-
-@inline function BioSequences.complement(nt::DNA)  # FASTER than native one
-    bits = BioSequences.compatbits(nt)
-    @inbounds complement_table[bits]
-end
+complement = BioSequences.complement
 
 @inline function iscomplement(a::DNA, b::DNA)
-    complement(a) === b
+    BioSequences.complement(a) === b
 end
 
 
@@ -134,7 +125,7 @@ end
 #     end
 #     return written
 # end
-function unsafe_write_no_lock(s::IOStream, p::Ptr{UInt8}, nb::UInt)
+@inline function unsafe_write_no_lock(s::IOStream, p::Ptr{UInt8}, nb::UInt)
     Int(ccall(:ios_write, Csize_t, (Ptr{Cvoid}, Ptr{Cvoid}, Csize_t), s.ios, p, nb))
 end
 

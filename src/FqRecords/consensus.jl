@@ -1,12 +1,12 @@
 
 """
-    pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert_size::Int64; min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
+    pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert_size::Int64; min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
 Paired-end consensus calling for read pairs with adapters trimmed. Return `is_consensused::Bool, ratio_mismatch::Float64`.
 
 If no overlapped bases, `ratio_mismatch = 0.0`.
 """
-function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert_size::Int64; min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
+function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert_size::Int64; min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
     r1_seq = r1.seq
     r2_seq = r2.seq
@@ -18,20 +18,26 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert
         r1_i = insert_size - r2_length + 1
         # check 8 bit alignment
         if r1_i % 2 == 1
-            r2_seq_rc.part = 1:r2_length
+            r2_seq_rc.len = r2_length
         else
             r1_i += 1
-            r2_seq_rc.part = 2:r2_length
+            deleteat!(r2_seq_rc, 1)
+            BioBits.unsafe_extra_bits_to_zeros!(r2_seq_rc)  # deleteat is not bitsafe, so have to use it.
+            # r2_seq_rc.part = 2:r2_length
         end
     else
-        r2_seq_rc.part = (r2_length-insert_size+1):r2_length
+        deleteat!(r2_seq_rc, 1:r2_length-insert_size)
+        BioBits.unsafe_extra_bits_to_zeros!(r2_seq_rc)  # deleteat is not bitsafe, so have to use it.
+        # r2_seq_rc.part = (r2_length-insert_size+1):r2_length
         r1_i = 1
     end
     length_overlap = min(length(r2_seq_rc), r1_length - r1_i + 1)
     length_overlap <= 0 && return false, 0.0
 
     # align r2_seq_rc.data and r1_seq.data
-    r2_seq_rc = resize!(r2_seq_rc, length_overlap)
+    if length(r2_seq_rc) != length_overlap  # when r1 length < insert size
+        resize!(r2_seq_rc, length_overlap)
+    end
 
     # Ptr{UInt32}: scan 8 bases each time
     p1 = get_pointer(0x0000000000000000, r1_seq)
@@ -42,6 +48,7 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert
     offset_max = cld(length_overlap, 2)
     # the start of ncompatible, minus the score of extra tail match
     num_ones = length_overlap - cld(offset_max,8)*16
+
     while p2_rc_offset <= offset_max
         # global ncompatible
         # global p1_offset
@@ -94,7 +101,7 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNASeq, insert
 end
 
 """
-    pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNASeq, r2_seq_rc::LongDNASeq; kmer_tolerance::Int64 = 2, overlap_score::Float64 = 0.0, min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
+    pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNA{4}, r2_seq_rc::LongDNA{4}; kmer_tolerance::Int64 = 2, overlap_score::Float64 = 0.0, min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
 Paired-end consensus calling for read pairs without adapters. Check whether the read pair has an overlapped region first. Return `is_consensused::Bool, ratio_mismatch::Float64`.
 
@@ -102,7 +109,7 @@ If no overlapped bases, `ratio_mismatch = 0.0`.
 
 If the lengths of R1 and R2 overlapped bases are different, `ratio_mismatch = -1.0`.
 """
-function pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNASeq, r2_seq_rc::LongDNASeq; kmer_tolerance::Int64 = 2, overlap_score::Float64 = 0.0, min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
+function pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNA{4}, r2_seq_rc::LongDNA{4}; kmer_tolerance::Int64 = 2, overlap_score::Float64 = 0.0, min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
     r1_seq = r1.seq
     r2_seq = r2.seq

@@ -1,5 +1,5 @@
 
-@noinline function test_get_seq()
+@testset "get seq" begin
     a = dna"NNNNATCGNNSANNNNNNNNNNNN" |> bitsafe!
 
     a.data = N2gap.(a.data)

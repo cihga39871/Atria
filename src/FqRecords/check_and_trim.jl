@@ -46,15 +46,15 @@ end
 end
 
 # @inline function tail_trim!(r::FqRecord, m::AlignMatch)::Nothing
-#     resize!(r.seq::LongDNASeq, m.insert_size::Int64)
+#     resize!(r.seq::LongDNA{4}, m.insert_size::Int64)
 #     resize!(r.qual, m.insert_size)
 #     resize!(r.prob, m.insert_size)
 #     return
 # end
 
 @inline function tail_trim!(r::FqRecord, nremain::Int64)::Nothing
-    if nremain < length(r.seq::LongDNASeq)
-        resize!(r.seq::LongDNASeq, nremain::Int64)
+    if nremain < length(r.seq::LongDNA{4})
+        resize!(r.seq::LongDNA{4}, nremain::Int64)
         resize!(r.qual, nremain)
         resize!(r.prob, nremain)
     end
@@ -62,14 +62,14 @@ end
 end
 
 @inline function tail_N_trim!(r::FqRecord)::Nothing
-    nbase = length(r.seq::LongDNASeq)::Int64
+    nbase = length(r.seq::LongDNA{4})::Int64
     # trim end
     n = nbase::Int64
     @inbounds while n::Int64 >= 1
-        (r.seq::LongDNASeq)[n]::DNA == DNA_N ? n -= 1 : break
+        (r.seq::LongDNA{4})[n]::DNA == DNA_N ? n -= 1 : break
     end
     if n::Int64 != nbase::Int64
-        resize!(r.seq::LongDNASeq, n::Int64)
+        resize!(r.seq::LongDNA{4}, n::Int64)
         resize!(r.qual, n)
         resize!(r.prob, n)
     end
@@ -77,14 +77,14 @@ end
 end
 
 @inline function tail_low_qual_trim!(r::FqRecord)::Nothing
-    nbase = length(r.seq::LongDNASeq)::Int64
+    nbase = length(r.seq::LongDNA{4})::Int64
     # trim end
     n = nbase::Int64
     @inbounds while n::Int64 >= 1
         (r.prob)[n] < 0.3 ? n -= 1 : break  # 0.3: phred Q < 1.5
     end
     if n::Int64 != nbase::Int64
-        resize!(r.seq::LongDNASeq, n::Int64)
+        resize!(r.seq::LongDNA{4}, n::Int64)
         resize!(r.qual, n)
         resize!(r.prob, n)
     end
@@ -149,7 +149,7 @@ end
 
 """
     seq_complexity(r::FqRecord)
-    seq_complexity(seq::LongDNASeq)
+    seq_complexity(seq::LongDNA{4})
 
 The complexity is defined as the percentage of bases that are different from their next bases (base[i] != base[i+1]). However, here we use an approximation algorithm.
 
@@ -165,8 +165,8 @@ ATATATATGGGGGGGG        : (0.5  0.5333333333333333)
 NANANANANANANANA        : (NaN  0.0)
 ```
 """
-@inline function seq_complexity(seq::LongDNASeq)
-    nbase = seq.part.stop  # cannot use length(r.seq) because seq may start from mid, which is not compatible with the algorithm
+@inline function seq_complexity(seq::LongDNA{4})
+    nbase = seq.len % Int64  # cannot use length(r.seq) because seq may start from mid, which is not compatible with the algorithm
     seq_data = seq.data
     n_valid_seq_data = length(seq_data) - 1  # -1 because of bitsafe
     n_ones = 0
@@ -193,7 +193,7 @@ end
 @inline seq_complexity(r::FqRecord) = seq_complexity(r.seq)
 
 
-@inline function polyX_tail_scan(a::DNA, b::LongDNASeq, allowed_mismatch_per_16mer::Int64; until::Int64 = 1)
+@inline function polyX_tail_scan(a::DNA, b::LongDNA{4}, allowed_mismatch_per_16mer::Int64; until::Int64 = 1)
     best_idx = 0
     n = length(b)
     n_mismatch = 0

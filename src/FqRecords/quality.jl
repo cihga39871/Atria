@@ -1,15 +1,20 @@
 
-# @inline qualpval(Q, quality_offset) = 10 ^ ( -(Q - quality_offset) / 10) # ^ operation is slow!
-# @inline qualprob(Q, quality_offset) = 1 - qualpval(Q, quality_offset)
-
 
 const qualpval_table = map(q -> 10 ^ (-q/10), 0:50)
 const qualprob_table = 1.0 .- qualpval_table
+
+"""
+The quality offset used in FqRecords should be the real quality offset - 1, such as Illumina 1.8 => 33-1
+"""
 @inline function qualpval(Q, quality_offset)::Float64
     q = Q - quality_offset
     q < 0 && error("Input quality < 0 detected. Wrong --quality-format FORMAT or the input file in truncated.")
     @inbounds qualpval_table[q > 51 ? 51 : q]
 end
+
+"""
+The quality offset used in FqRecords should be the real quality offset - 1, such as Illumina 1.8 => 33-1
+"""
 @inline function qualprob(Q, quality_offset)::Float64
     q = Q - quality_offset
     q < 0 && error("Input quality < 0 detected. Wrong --quality-format FORMAT or the input file in truncated.")
@@ -57,22 +62,3 @@ end
     @fastmath value/n
 end
 
-# function qualcounttable(rs::Vector{FqRecord}, quality_offset::UInt8=0x21)
-#     max_len = 0
-#     for r in rs
-#         len = length(r.qual)
-#         if len > max_len
-#             max_len = len
-#         end
-#     end
-#
-#     qualtable = zeros(Int, max_len, 30)
-#     for r in rs
-#         len = length(r.qual)
-#         @inbounds for i = 1:len
-#             q = min(r.qual[i] - quality_offset, 30)
-#             qualtable[i, q] += 1
-#         end
-#     end
-#     qualtable
-# end

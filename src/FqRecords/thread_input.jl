@@ -891,7 +891,7 @@ Return number of reads in `rs` are valid.
             des = @inbounds inbytes[idx_des_start:(idx_des_start + n_des - 1)]
             qual = @inbounds inbytes[idx_qual_start:(idx_qual_start + n_qual - 1)]
 
-            seq = LongDNASeq(n_seq)
+            seq = LongDNA{4}(undef, n_seq)
             safe_copyto!(seq, inbytes, idx_seq_start, n_seq)
 
             i_fq = FqRecord(id, seq, des, qual, quality_offset=quality_offset)
@@ -956,7 +956,7 @@ end
 #             des = @inbounds inbytes[idx_des_start:(idx_des_start + n_des - 1)]
 #             qual = @inbounds inbytes[idx_qual_start:(idx_qual_start + n_qual - 1)]
 #
-#             seq = LongDNASeq(n_seq)
+#             seq = LongDNA{4}(n_seq)
 #             safe_copyto!(seq, inbytes, idx_seq_start, n_seq)
 #
 #             i_fq = FqRecord(id, seq, des, qual, quality_offset=quality_offset)

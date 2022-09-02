@@ -1,6 +1,8 @@
 
 module Atria
 
+# add ArgParse BioSymbols BioSequences Printf JSON Statistics DelimitedFiles Distributed Logging DataStructures Markdown PrettyTables
+
 # using ArgParse
 # using BioSymbols
 # using BioSequences
@@ -13,6 +15,7 @@ module Atria
 # using Logging
 # using DataStructures
 # using Markdown
+# using PrettyTables
 
 include(joinpath("BioBits", "BioBits.jl"))
 using .BioBits
