@@ -110,8 +110,8 @@ Return the length `n` of reads to keep. `-1` means no need for quality trimming.
     i = 1
 
     ### check any qual less than q0
-    @inbounds while i <= nqual
-        if quals[i] < q0
+    while i <= nqual
+        if @inbounds(quals[i]) < q0
             break  # start matching sliding window
         end
         i += 1
@@ -121,26 +121,26 @@ Return the length `n` of reads to keep. `-1` means no need for quality trimming.
     (i > nbase) && @goto tail_qual_match  # i in the last n bases, go to tail_qual_match
 
     ### check sliding window
-    qual_sum = UInt64(@inbounds quals[i])::UInt64
+    qual_sum = UInt64(@inbounds quals[i])
     start = i + 1
     stop = i + N
-    @inbounds for m in start:stop
-        qual_sum += quals[m]
+    for m in start:stop
+        qual_sum += @inbounds quals[m]
     end
 
     (qual_sum < qn) && @goto tail_qual_match  # ith failed quality match
 
     i += 1
     while i <= nbase
-        @inbounds qual_sum += quals[i+N]
-        @inbounds qual_sum -= quals[i-1]
+        qual_sum += @inbounds quals[i+N]
+        qual_sum -= @inbounds quals[i-1]
         (qual_sum < qn) && @goto tail_qual_match  # ith failed quality match
         i += 1
     end
 
     @label tail_qual_match
     while i <= nqual
-        (quals[i] < q0) && return i-1  # ith failed quality match
+        (@inbounds(quals[i]) < q0) && return i-1  # ith failed quality match
         i += 1
     end
 
@@ -200,7 +200,7 @@ end
     allowed_mismatch = allowed_mismatch_per_16mer
     n_polyX_length = 0
     while n >= until
-        if b[n] === a
+        if @inbounds(b[n]) === a
             best_idx = n
         else
             n_mismatch += 1

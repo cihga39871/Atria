@@ -132,7 +132,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
 
     #======= Check identifier (not applicable in single end)=======#
-    CheckIdentifier = nothing
+    # CheckIdentifier = nothing
 
     #======= PolyX =======#
     PolyG = do_polyG ? quote
@@ -170,7 +170,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     #======= Complexity =======#
     ComplexityFilter = do_complexity_filtration ? quote
         if seq_complexity(r1) < $min_complexity
-            return false
+            is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
@@ -196,7 +196,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     LengthFilter = do_length_filtration ? quote
         if !isinreadlength!(r1::FqRecord, $length_range)
             # global count_reads_pair_invalid_length[thread_id] += 1
-            return false
+            is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
@@ -204,7 +204,7 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     #======= If reads have so many N, remove =======#
     MaxNFilter = do_max_n_filtration ? quote
         if !isnotmuchN!(r1::FqRecord, $max_N)
-            return false
+            is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
@@ -244,25 +244,63 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     end : nothing
 
 
-    @eval function read_processing!(r1::FqRecord, thread_id::Int)::Bool
-        $CheckIdentifier
-        $PolyG
-        $PolyT
-        $PolyA
-        $PolyC
-        $LengthFilter
-        $AdapterTrim
-        $HardClip3End
-        $HardClip5End
-        $QualityTrim
-        $TailNTrim
-        $MaxNFilter
-        $LengthFilter
-        $ComplexityFilter
-        return true
+    # @eval function read_processing!(r1::FqRecord, thread_id::Int)::Bool
+    #     $CheckIdentifier
+    #     $PolyG
+    #     $PolyT
+    #     $PolyA
+    #     $PolyC
+    #     $LengthFilter
+    #     $AdapterTrim
+    #     $HardClip3End
+    #     $HardClip5End
+    #     $QualityTrim
+    #     $TailNTrim
+    #     $MaxNFilter
+    #     $LengthFilter
+    #     $ComplexityFilter
+    #     return true
+    # end
+
+    # moved from thread_trim.jl to fix world age error.
+    function processing_reads_range!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, reads_range::UnitRange{Int64})
+        this_threadid = Threads.threadid()
+        for i in reads_range
+            @inbounds isgoods[i] = read_processing!(r1s[i], this_threadid)
+        end
     end
-
-
+    @eval function processing_reads_threads!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
+        if length(isgoods) < n_reads
+            resize!(isgoods, n_reads)
+        end
+        # split reads to N reads per batch
+        Threads.@threads for reads_start in 1:512:n_reads
+            reads_end = min(reads_start + 511, n_reads)
+            reads_range = reads_start:reads_end
+            thread_id = Threads.threadid()
+    
+            for i in reads_range
+                r1 = r1s[i]
+                is_good = true
+                $PolyG
+                $PolyT
+                $PolyA
+                $PolyC
+                $LengthFilter
+                $AdapterTrim
+                $HardClip3End
+                $HardClip5End
+                $QualityTrim
+                $TailNTrim
+                $MaxNFilter
+                $LengthFilter
+                $ComplexityFilter
+                @label stop_read_processing
+                @inbounds isgoods[i] = is_good
+            end
+        end
+    end
+    
     in1bytes = Vector{UInt8}(undef, max_chunk_size)
 
     # number of jobs to boxing FqRecord from UInt8 Vector
@@ -430,10 +468,10 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
             n_reads = n_r1
             total_read_copied_in_loading += ncopied
 
-            processing_reads_threads!(r1s, isgoods, n_reads)
+            Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
 
             #= debug
-            for i in 1:length(r1s)
+            for i in eachindex(r1s)
                 @info i
                 read_processing!(r1s[i], 1)
             end

@@ -78,8 +78,8 @@ function detect_adapter_threads!(rs::Vector{FqRecord}; kmer_tolerance::Int = 2, 
     end
     df = [adapters counts identities]
     perm = sortperm(counts, rev=true)
-    df_sorted = df[perm,:]
-    top5 = df_sorted[1:5,:]
+    df_sorted = @inbounds df[perm,:]
+    top5 = @inbounds df_sorted[1:5,:]
     headers = ["Adapter", "Occurance", "Identity"]
     return top5, headers
 end

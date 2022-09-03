@@ -15,8 +15,8 @@ function check_compatibility()
     end
 
     if !(v"1.4" <= VERSION < v"1.5")
-        @warn "Julia version is not v1.4. The build might be fail."
-        @error "Performance Notice: Atria built with Julia v1.5-1.6.1 is slower than Julia v1.4.2."
+        @warn "Julia version is not v1.8. The build might be fail."
+        # @error "Performance Notice: Atria built with Julia v1.5-1.6.1 is slower than Julia v1.4.2."
     end
 
     try
@@ -42,7 +42,7 @@ Pkg.activate(".")
 Pkg.instantiate()
 
 using PackageCompiler
-
+using Dates
 
 ver = "atria"
 if isfile("Project.toml")
@@ -61,6 +61,10 @@ else
     app_path = joinpath(".", "app-$ver")
 end
 
+if isdir(app_path)
+    app_path *= "_" * replace(string(now()), r":\d\d\..*" => "", ":" => "-")
+end
+
 bash_wrapper = raw"""
 #!/usr/bin/env bash
 
@@ -75,18 +79,18 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 ALLARGS=( "$@" )
 
 # default
-export JULIA_NUM_THREADS=8
+JULIA_NUM_THREADS=8
 
 while [[ $# -gt 0 ]]
 do
     case "$1" in
         --threads)
-        export JULIA_NUM_THREADS="$2"
+        JULIA_NUM_THREADS="$2"
         shift
         shift
         ;;
         -t)
-        export JULIA_NUM_THREADS="$2"
+        JULIA_NUM_THREADS="$2"
         shift
         shift
         ;;
@@ -105,22 +109,22 @@ case "${unameOut}" in
     *)          EXT=so;;
 esac
 
-JULIA="$DIR/julia"
+ATRIA="$DIR/_atria"
 
-"$JULIA" --color=yes -O3 --check-bounds=no --math-mode=fast "-J${DIR}/AtriaEntry.${EXT}" -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- "${ALLARGS[@]}"
+"$ATRIA" "${ALLARGS[@]}" --julia-args -O3 --check-bounds=no --math-mode=fast -t "$JULIA_NUM_THREADS"
 
 """
 
 precompile_execution_file = joinpath("test", "runtests.jl")
 
-create_app(".", app_path, incremental=false, force=true, precompile_execution_file=precompile_execution_file, app_name="AtriaEntry")
+create_app(".", app_path, incremental = false, force = true, filter_stdlibs = true, sysimage_build_args = `-O3 --check-bounds=no --math-mode=fast`, precompile_execution_file = precompile_execution_file, executables = ["_atria" => "julia_main"])
 
-ext = Sys.isapple() ? "dylib" : "so"
-isfile(joinpath(app_path, "bin", "AtriaEntry.$ext"))
+# ext = Sys.isapple() ? "dylib" : "so"
+# isfile(joinpath(app_path, "bin", "AtriaEntry.$ext"))
 
 # copy julia exe
-julia_exe = joinpath(Sys.BINDIR, Base.julia_exename())
-cp(julia_exe, joinpath(app_path, "bin", Base.julia_exename()))
+# julia_exe = joinpath(Sys.BINDIR, Base.julia_exename())
+# cp(julia_exe, joinpath(app_path, "bin", Base.julia_exename()))
 
 Atria_bash = joinpath(app_path, "bin", "atria")
 io = open(Atria_bash, "w+")

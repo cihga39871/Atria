@@ -25,18 +25,18 @@
         Trimmer.Distributed.pmap(+,[1,2],[4,5])
 
 
-        julia_wrapper_simulate(["-o" ,"peReadSimulated", "-x", "2000"])
-        julia_wrapper_simulate(["-h"], exit_after_help=false)
+        Benchmark.julia_wrapper_simulate(["-o" ,"peReadSimulated", "-x", "2000"])
+        Benchmark.julia_wrapper_simulate(["-h"], exit_after_help=false)
 
-        julia_wrapper_randtrim(["peReadSimulated.R1.fastq", "peReadSimulated.R2.fastq"])
-        julia_wrapper_randtrim(["-h"])
+        Benchmark.julia_wrapper_randtrim(["peReadSimulated.R1.fastq", "peReadSimulated.R2.fastq"])
+        Benchmark.julia_wrapper_randtrim(["-h"])
 
         if Sys.iswindows()
             julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-c", "8", "--compress", "gz"])
         else
             run(`pigz --keep peReadSimulated.R1.randtrim.fastq`)
             run(`pigz --keep peReadSimulated.R2.randtrim.fastq`)
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "gz", "--check-identifier"])
+            Trimmer.julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "gz", "--check-identifier"])
             julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "gz"])
             julia_wrapper_detect_adapter(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "gz"])
 

@@ -70,7 +70,6 @@ Caution: bitsafe LongDNA{4} may not be compatible on all BioSequences functions,
         resize!(seq.data, cld(seq.len, 16) + 1)
     end
     unsafe_extra_bits_to_zeros!(seq)
-    seq
 end
 
 """

@@ -206,9 +206,9 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     #======= Complexity =======#
     ComplexityFilter = do_complexity_filtration ? quote
         if seq_complexity(r1) < $min_complexity
-            return false
+            is_good = false; @goto stop_read_processing # return false
         elseif seq_complexity(r2) < $min_complexity
-            return false
+            is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
@@ -238,7 +238,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     LengthFilter = do_length_filtration ? quote
         if !isinreadlength!(r1::FqRecord, r2::FqRecord, $length_range)
             # global count_reads_pair_invalid_length[thread_id] += 1
-            return false
+            is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
@@ -246,7 +246,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     #======= If reads have so many N, remove =======#
     MaxNFilter = do_max_n_filtration ? quote
         if !isnotmuchN!(r1::FqRecord, r2::FqRecord, $max_N)
-            return false
+            is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
@@ -432,22 +432,57 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
 
 
-    @eval function read_processing!(r1::FqRecord, r2::FqRecord, thread_id::Int)::Bool
-        $CheckIdentifier
-        $PolyG
-        $PolyT
-        $PolyA
-        $PolyC
-        $LengthFilter
-        $AdapterTrim
-        $HardClip3End
-        $HardClip5End
-        $QualityTrim
-        $TailNTrim
-        $MaxNFilter
-        $LengthFilter
-        $ComplexityFilter
-        return true
+
+    # @eval function read_processing!(r1::FqRecord, r2::FqRecord, thread_id::Int)::Bool
+    #     $CheckIdentifier
+    #     $PolyG
+    #     $PolyT
+    #     $PolyA
+    #     $PolyC
+    #     $LengthFilter
+    #     $AdapterTrim
+    #     $HardClip3End
+    #     $HardClip5End
+    #     $QualityTrim
+    #     $TailNTrim
+    #     $MaxNFilter
+    #     $LengthFilter
+    #     $ComplexityFilter
+    #     true
+    # end
+    # moved from thread_trim.jl to fix world age error.
+   
+    @eval function processing_reads_threads!(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
+        if length(isgoods) < n_reads
+            resize!(isgoods, n_reads)
+        end
+        # split reads to N reads per batch
+        Threads.@threads for reads_start in 1:256:n_reads
+            reads_end = min(reads_start + 255, n_reads)
+            reads_range = reads_start:reads_end
+            thread_id = Threads.threadid()
+            for i in reads_range
+                r1 = r1s[i]
+                r2 = r2s[i]
+                is_good = true
+                $CheckIdentifier
+                $PolyG
+                $PolyT
+                $PolyA
+                $PolyC
+                $LengthFilter
+                $AdapterTrim
+                $HardClip3End
+                $HardClip5End
+                $QualityTrim
+                $TailNTrim
+                $MaxNFilter
+                $LengthFilter
+                $ComplexityFilter
+                @label stop_read_processing
+                @inbounds isgoods[i] = is_good
+            end
+        end
     end
 
 
@@ -611,7 +646,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             if typeof(io1) <: IOStream  # not compressed
                 length(in1bytes) == chunk_size1 || resize!(in1bytes, chunk_size1)
                 length(in2bytes) == chunk_size2 || resize!(in2bytes, chunk_size2)
-                (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s; remove_first_n = n_reads, njobs=njobs)
+                (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
                 total_n_bytes_read2 += length(in2bytes)  # will read INT in this batch
@@ -624,7 +659,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                     will_eof1 = will_eof1, will_eof2 = will_eof2,
                     in1bytes_resize_before_read = chunk_size1,
                     in2bytes_resize_before_read = chunk_size2,
-                    remove_first_n = n_reads, njobs = njobs
+                    remove_first_n = n_reads, quality_offset = quality_offset,
+                    njobs = njobs
                 )
             end
 
@@ -636,7 +672,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
             # check_fq_ids(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, n_reads::Int)::nothing
 
-            processing_reads_threads!(r1s, r2s, isgoods, n_reads)
+            # processing reads
+            Base.invokelatest(processing_reads_threads!, r1s, r2s, isgoods, n_reads)
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)

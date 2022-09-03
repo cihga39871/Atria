@@ -425,20 +425,15 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     nothing
 end
 
-"""
-    get_quality_offset(quality_format_string::String)
-
-The quality offset used in FqRecords should be the real quality offset - 1, such as Illumina 1.8 => 33-1
-"""
 function get_quality_offset(quality_format_string::String)
     if occursin(r"^\d+$", quality_format_string)
-        parse(Int64, quality_format_string) - 1
+        parse(Int64, quality_format_string)
     else
         fmt = uppercase(quality_format_string)
         if fmt in ["ILLUMINA1.3", "ILLUMINA1.5", "SOLEXA"]
-            63
+            64
         elseif fmt in ["SANGER", "ILLUMINA1.8"]
-            32
+            33
         else
             @error "--quality-format FORMAT invalid; FORMAT shoule be the format of the quality score (Illumina1.3, Illumina1.8, Sanger, Illumina1.5, Solexa) or the ASCII number when quality score == 0" FORMAT=quality_format_string  _module=nothing _group=nothing _id=nothing _file=nothing
             exit(1)

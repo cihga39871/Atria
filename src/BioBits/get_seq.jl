@@ -87,7 +87,7 @@ struct SeqHeadSet
 end
 
 function BioSequences.LongDNA{4}(s::SeqHeadSet)
-    LongDNA{4}([s.s64.a], 16)
+    LongDNA{4}([s.s64.a], 0x0000000000000010)  # 16 % UInt64
 end
 
 """

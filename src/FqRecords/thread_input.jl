@@ -66,7 +66,7 @@ function load_fqs_threads!(
     task_read2 = Threads.@spawn read_chunks!(io2, in2bytes, njobs)
 
     tasks = Task[]
-    @inbounds for i in 1:length(idx_fq1_starts)
+    @inbounds for i in eachindex(idx_fq1_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks, i_task)
     end
@@ -74,7 +74,7 @@ function load_fqs_threads!(
     idx_fq2_starts, idx_fq2_stops = fetch(task_read2)
 
     tasks2 = Task[]
-    @inbounds for i in 1:length(idx_fq2_starts)
+    @inbounds for i in eachindex(idx_fq2_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks2, i_task)
     end
@@ -95,7 +95,7 @@ end
         vr1s::NTuple{N, Vector{FqRecord}},
         r1s::Vector{FqRecord}            ;
         remove_first_n::Int64 = 0        ,
-        quality_offset::Int64=33         ,
+        quality_offset::Int64 = 33       ,
         njobs = 2                        ) where N
 
 The interface to load FASTQ files. Design for `IOStream` only.
@@ -110,7 +110,7 @@ function load_fqs_threads!(
     vr1s::NTuple{N, Vector{FqRecord}},
     r1s::Vector{FqRecord}            ;
     remove_first_n::Int64 = 0        ,
-    quality_offset::Int64=33         ,
+    quality_offset::Int64 = 33       ,
     njobs = 2                        ) where N
 
     #== IMPORTANT :: Shared elements conflicts in vrs and rs ::
@@ -144,7 +144,7 @@ function load_fqs_threads!(
     idx_fq1_starts, idx_fq1_stops = read_chunks!(io1, in1bytes, njobs)
 
     tasks = Task[]
-    @inbounds for i in 1:length(idx_fq1_starts)
+    @inbounds for i in eachindex(idx_fq1_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks, i_task)
     end
@@ -168,7 +168,8 @@ end
         will_eof1::Bool = true        , will_eof2::Bool = true        ,
         in1bytes_resize_before_read::Integer = length(in1bytes)       ,
         in2bytes_resize_before_read::Integer = length(in2bytes)       ,
-        remove_first_n::Int64 = 0     , njobs = 2                     ) where N
+        remove_first_n::Int64 = 0     , njobs = 2                     ,
+        quality_offset::Int64 = 33    ) where N
 
 The interface to load FASTQ files. Design for general `IO` that does not support seeking.
 
@@ -187,7 +188,8 @@ function load_fqs_threads!(
     will_eof1::Bool = true        , will_eof2::Bool = true        ,
     in1bytes_resize_before_read::Integer = length(in1bytes)       ,
     in2bytes_resize_before_read::Integer = length(in2bytes)       ,
-    remove_first_n::Int64 = 0     , njobs = 2                     ) where N
+    remove_first_n::Int64 = 0     , njobs = 2                     ,
+    quality_offset::Int64 = 33    ) where N
 
     #== IMPORTANT :: Shared elements conflicts in vrs and rs ::
 
@@ -246,16 +248,16 @@ function load_fqs_threads!(
     end
 
     tasks = Task[]
-    @inbounds for i in 1:length(idx_fq1_starts)
-        i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1)
+    @inbounds for i in eachindex(idx_fq1_starts)
+        i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset = quality_offset)
         push!(tasks, i_task)
     end
 
     idx_fq2_starts, idx_fq2_stops, in2bytes, in2bytes_nremain = fetch(task_read2)
 
     tasks2 = Task[]
-    @inbounds for i in 1:length(idx_fq2_starts)
-        i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1)
+    @inbounds for i in eachindex(idx_fq2_starts)
+        i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1, quality_offset = quality_offset)
         push!(tasks2, i_task)
     end
     # vr1s_stops = map(fetch, tasks)
@@ -278,6 +280,7 @@ end
         r1s::Vector{FqRecord}         ;
         will_eof1::Bool = true        ,
         remove_first_n::Int64 = 0     ,
+        quality_offset::Int64 = 33    ,
         njobs = 2                     ) where N
 
 The interface to load FASTQ files. Design for general `IO` that does not support seeking.
@@ -296,6 +299,7 @@ function load_fqs_threads!(
     r1s::Vector{FqRecord}         ;
     will_eof1::Bool = true        ,
     remove_first_n::Int64 = 0     ,
+    quality_offset::Int64 = 33    ,
     njobs = 2                     ) where N
 
     #== IMPORTANT :: Shared elements conflicts in vrs and rs ::
@@ -328,8 +332,8 @@ function load_fqs_threads!(
     idx_fq1_starts, idx_fq1_stops, in1bytes, in1bytes_nremain = read_chunks!(io1, in1bytes, in1bytes_nremain, njobs; will_eof = will_eof1)
 
     tasks = Task[]
-    @inbounds for i in 1:length(idx_fq1_starts)
-        i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1)
+    @inbounds for i in eachindex(idx_fq1_starts)
+        i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset = quality_offset)
         push!(tasks, i_task)
     end
 

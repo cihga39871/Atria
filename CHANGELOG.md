@@ -1,10 +1,11 @@
 # Atria Change Log
 
-## Compatible with Julia v1.8 and BioSequences v3.1.0
+## v3.1.3
 
-- Name changed: `LongDNASeq` -> `LongDNA{4}`
-- `LongDNASeq` Field changed: `part`, `shared` are removed. `len::UInt` added.
-- Construction method changed: `LongDNA{4}([0x4214824181422181],1:40,false)` -> `LongDNA{4}([0x4214824181422181],UInt(40))`
+- Compatible: Julia v1.8 and BioSequences v3.1.0.
+- Fix: quality offset not changed in some places when providing a different --quality-format.
+- Fix: use `Base.invokelatest` to bypass world age for functions evaluated at run time.
+- Docs: update.
 
 ## v3.1.2
 

@@ -11,7 +11,7 @@ if isempty(ARGS) || !isfile(ARGS[1])
     stderr.pigz.log compensate the bug of GNU TIME which cannot stat the subprocess (pigz) of Julia. The file is the result of ```
         /usr/bin/time pigz -p 8 -c Atria-consensus/*atria.fq 1>/dev/null 2>> stderr.pigz.log
         /usr/bin/time pigz -p 8 -c Atria/*atria.fq 1>/dev/null 2>> stderr.pigz.log
-        /usr/bin/time pigz -cd $r1 $r2 > /dev/null 2>> stderr.pigz.log
+        /usr/bin/time pigz -cd \$r1 \$r2 > /dev/null 2>> stderr.pigz.log
     ```
 
     Result output to stdout.

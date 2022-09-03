@@ -33,7 +33,7 @@ include(joinpath("AtriaTest", "AtriaTest.jl"))
 using .AtriaTest
 
 
-function julia_main()
+function julia_main()::Cint
 
     help_programs = """
     Available programs:
