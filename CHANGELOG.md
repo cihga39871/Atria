@@ -1,5 +1,9 @@
 # Atria Change Log
 
+## dev
+
+- Logging: new logging for versions and sample completion.
+
 ## v3.1.3
 
 - Compatible: Julia v1.8 and BioSequences v3.1.0.

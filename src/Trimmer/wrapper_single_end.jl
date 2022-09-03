@@ -376,8 +376,9 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
         iolog = open(outlog, "w+")
         logger = Logging.SimpleLogger(iolog)
 
+        @info "ATRIA VERSIONS" atria=atria_version julia=string("v", VERSION)
         @info "ATRIA ARGUMENTS" command
-        @info "ATRIA OUTPUT FILES" read1=outfile1
+        @info "ATRIA OUTPUT FILES" read=outfile1
         @info("ATRIA TRIMMERS AND FILTERS",
             tail_polyG_trimming = do_polyG,
             tail_polyT_trimming = do_polyT,
@@ -394,8 +395,9 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
             complexity_filtering = do_complexity_filtration)
 
         with_logger(logger) do
+            @info "ATRIA VERSIONS" atria=atria_version julia=string("v", VERSION)
             @info "ATRIA ARGUMENTS" command
-            @info "ATRIA OUTPUT FILES" read1=outfile1
+            @info "ATRIA OUTPUT FILES" read=outfile1
             @info("ATRIA TRIMMERS AND FILTERS",
                 tail_polyG_trimming = do_polyG,
                 tail_polyT_trimming = do_polyT,
@@ -496,6 +498,11 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
         while !eof(io1::IO)
             cycle_wrapper_single_end()
+        end
+
+        @info "ATRIA COMPLETE" read=outfile1
+        with_logger(logger) do
+            @info "ATRIA COMPLETE" read=outfile1
         end
 
         time_read_processing = time() - time_read_processing

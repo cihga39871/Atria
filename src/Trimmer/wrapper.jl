@@ -575,6 +575,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         iolog = open(outlog, "w+")
         logger = Logging.SimpleLogger(iolog)
 
+        @info "ATRIA VERSIONS" atria=atria_version julia=string("v", VERSION)
         @info "ATRIA ARGUMENTS" command
         @info "ATRIA OUTPUT FILES" read1=outfile1 read2=outfile2
         @info("ATRIA TRIMMERS AND FILTERS",
@@ -588,6 +589,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             length_filtering = do_length_filtration)
 
         with_logger(logger) do
+            @info "ATRIA VERSIONS" atria=atria_version julia=string("v", VERSION)
             @info "ATRIA ARGUMENTS" command
             @info "ATRIA OUTPUT FILES" read1=outfile1 read2=outfile2
             @info("ATRIA TRIMMERS AND FILTERS",
@@ -695,6 +697,11 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
         while !eof(io1::IO) || !eof(io2::IO)
             cycle_wrapper()
+        end
+        
+        @info "ATRIA COMPLETE" read1=outfile1 read2=outfile2
+        with_logger(logger) do
+            @info "ATRIA COMPLETE" read1=outfile1 read2=outfile2
         end
 
         time_read_processing = time() - time_read_processing
