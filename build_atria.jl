@@ -41,6 +41,7 @@ cd(@__DIR__)
 Pkg.activate(".")
 Pkg.instantiate()
 
+import Pkg; Pkg.add("PackageCompiler")
 using PackageCompiler
 using Dates
 
