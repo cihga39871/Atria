@@ -84,6 +84,37 @@ atria-trim-arg-human(){
 	rm $i.bowtie2.bam
 }
 
+atria-trim-human(){
+	outdir="Atria-$(julia $atria/src/atria --version)"
+
+	r1=ERR4695159_1.fastq.gz
+	r2=ERR4695159_2.fastq.gz
+	a1=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
+	a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+	bwa_ref=`pwd`/genomes/hg38.fasta.gz
+
+	julia $atria/src/atria --no-consensus -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --compress no
+	local i=$outdir/ERR4695159_1.atria.fastq
+	mapping_bowtie2 $i $outdir/ERR4695159_2.atria.fastq
+	samtools stats $i.bowtie2.bam > $i.bowtie2.bam.samtools-stats
+	rm $i.bowtie2.bam
+}
+atria-trim-human-consensus(){
+	outdir="Atria-consensus-$(julia $atria/src/atria --version)"
+
+	r1=ERR4695159_1.fastq.gz
+	r2=ERR4695159_2.fastq.gz
+	a1=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
+	a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+	bwa_ref=`pwd`/genomes/hg38.fasta.gz
+
+	julia $atria/src/atria -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --compress no
+	local i=$outdir/ERR4695159_1.atria.fastq
+	mapping_bowtie2 $i $outdir/ERR4695159_2.atria.fastq
+	samtools stats $i.bowtie2.bam > $i.bowtie2.bam.samtools-stats
+	rm $i.bowtie2.bam
+}
+
 atria-trim-arg-simulate(){
 	kmer_tolerance=$1 # 2
 	diff1=$2  # pe-adapter-diff 0

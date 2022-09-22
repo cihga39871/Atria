@@ -77,6 +77,11 @@ ln -s ../SeqPurge/ERR4695159_2.fastq.gz.seqpurge.fq.gz trimmed/seqpurge.R2.fastq
 ln -s ../Atropos/ERR4695159_1.fastq.gz.atropos.fq.gz trimmed/atropos.R1.fastq.gz
 ln -s ../Atropos/ERR4695159_2.fastq.gz.atropos.fq.gz trimmed/atropos.R2.fastq.gz
 
+# ln -s ../Atria-v3.1.4/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-v3.1.4.R1.fastq.gz
+# ln -s ../Atria-v3.1.4/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-v3.1.4.R2.fastq.gz
+
+# ln -s ../Atria-consensus-v3.1.4/${r1/.fastq*/}.atria.fastq.gz trimmed/atria-consensus-v3.1.4.R1.fastq.gz
+# ln -s ../Atria-consensus-v3.1.4/${r2/.fastq*/}.atria.fastq.gz trimmed/atria-consensus-v3.1.4.R2.fastq.gz
 
 # mapping after qualtrim
 QSCORE=15
