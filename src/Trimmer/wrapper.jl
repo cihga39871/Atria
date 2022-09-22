@@ -51,8 +51,9 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                 new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
 
                 logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
+                nthread = Threads.nthreads()
                 try
-                    run(pipeline(`$julia_command -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
+                    run(pipeline(`$julia_command -t $nthread -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
                 catch e
                     rethrow(e)
                 end
