@@ -59,7 +59,9 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
                 return 0
             end
-            @eval @everywhere ARGS = $ARGS
+            ARGS_backup = deepcopy(ARGS) # cannot assign ARGS to Base.ARGS from module Main
+            @eval @everywhere empty!(ARGS)
+            @eval @everywhere append!(ARGS, $ARGS_backup)
             @eval @everywhere sub_procs = $sub_procs
             @eval @everywhere outdir = $outdir
             @info "Parallel mode: logs saved to $outdir/*.atria.(std)log(.json)"
@@ -386,7 +388,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             if is_true_positive
                 @label trim
                 @static if $do_consensus_calling
-                    if r1_insert_size_decision == r2_insert_size_decision
+                    if r1_insert_size_decision == r2_insert_size_decision && r1_insert_size_decision > 0
                         pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                     end
                 end
@@ -405,8 +407,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                     r1_insert_size_decision
                 end
 
-                r1_nremain >= 0 && tail_trim!(r1::FqRecord, r1_nremain)
-                r2_nremain >= 0 && tail_trim!(r2::FqRecord, r2_nremain)
+                tail_trim!(r1::FqRecord, max(r1_nremain, 0))
+                tail_trim!(r2::FqRecord, max(r2_nremain, 0))
 
                 @static if $do_read_stats
                     r12_trim = true

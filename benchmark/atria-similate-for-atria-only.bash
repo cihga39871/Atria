@@ -6,8 +6,8 @@ a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
 r1="reads_diff_indel.R1.fastq"
 r2="reads_diff_indel.R2.fastq"
 
-atria_old=atria
-atria_new=/home/jc/projects/atria/app-3.1.3/bin/atria
+atria_old=~/projects/atria/app-3.1.2/bin/atria
+atria_new=~/projects/atria/app-3.1.4/bin/atria
 
 . $atria/benchmark/trimming-functions.bash
 
@@ -89,6 +89,10 @@ run_atria_consensus_new 4 2>> stderr.log
 run_atria_consensus_new 8 2>> stderr.log
 run_atria_consensus_new 16 2>> stderr.log
 
+# run_atria 16 2>> stderr.log
+# run_atria_new 16 2>> stderr.log
+# run_atria_consensus 16 2>> stderr.log
+# run_atria_consensus_new 16 2>> stderr.log
 
 ll */*fastq
 

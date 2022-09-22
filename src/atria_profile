@@ -1,0 +1,10 @@
+#! julia -i
+
+@info "Atria without precompilation. It may take a while to precompile."
+
+include(joinpath(@__DIR__, "Atria.jl"))
+
+using ProfileView
+
+@profview Atria.julia_main()
+@profview Atria.julia_main()
