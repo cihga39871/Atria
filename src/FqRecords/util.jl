@@ -57,7 +57,7 @@ end
 @noinline function BioSequences.throw_encode_error(A::BioSequences.Alphabet, src::AbstractArray{UInt8}, soff::Integer)
     for i in 1:div(64, BioSequences.bits_per_symbol(A))
         sym = src[soff+i-1]
-        if BioSequences.stringbyte(A, sym) & 0x80 == 0x80
+        if BioSequences.ascii_encode(A, sym) & 0x80 == 0x80
             # find the context around the error: one previous line and the current line
             nsrc = length(src)
             context_start = soff + i - 2
