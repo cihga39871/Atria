@@ -1,5 +1,5 @@
 
-f_procs(x::String) = x == "-p" || x == "--procs"
+# f_procs(x::String) = x == "-p" || x == "--procs"
 
 function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
@@ -15,7 +15,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     nthread = args["threads"]
     outdir = args["output-dir"]
 
-    #================== Parallel control ====================
+    #================== Parallel control (masked after v3.1.4) ====================
     --procs 4onlyrun2 is a hidden feature for parallel computing...
     onlyrun2 means only run the second read pair fastqs.
     MECHANISM:
@@ -29,55 +29,55 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     nfile = length(args["read1"])
     file_range = 1:nfile
 
-    index_procs = findfirst(f_procs, ARGS)
-    if index_procs != nothing  # argument --procs is specified
-        nparallel = tryparse(Int64, args["procs"])
-        if isnothing(nparallel)  # --procs might be 4onlyrun2
-            if occursin(r"\d+onlyrun\d+", args["procs"])
-                _filenum = parse(Int64, match(r"\d+onlyrun(\d+)$", args["procs"]).captures[1])
-                file_range = _filenum:_filenum
-            else
-                @error "--procs INT must be positive integer" _module=:. _group=:. _id=:. _file="."
-                exit(3)
-            end
-        else
-            # start run this code as parallel.
-            addprocs(nparallel)
-            julia_command = Base.julia_cmd()
+    # index_procs = findfirst(f_procs, ARGS)
+    # if index_procs != nothing  # argument --procs is specified
+    #     nparallel = tryparse(Int64, args["procs"])
+    #     if isnothing(nparallel)  # --procs might be 4onlyrun2
+    #         if occursin(r"\d+onlyrun\d+", args["procs"])
+    #             _filenum = parse(Int64, match(r"\d+onlyrun(\d+)$", args["procs"]).captures[1])
+    #             file_range = _filenum:_filenum
+    #         else
+    #             @error "--procs INT must be positive integer" _module=:. _group=:. _id=:. _file="."
+    #             exit(3)
+    #         end
+    #     else
+    #         # start run this code as parallel.
+    #         addprocs(nparallel)
+    #         julia_command = Base.julia_cmd()
 
-            function sub_procs(filenum::Int64, r1_filename::String, r2_filename::String, nfile::Int64, julia_command::Cmd)
-                println("Atria: ($filenum/$nfile) $r1_filename $r2_filename")
-                new_args = ARGS[1:end]
-                # presumption: --procs is specified in ARGS
-                new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
+    #         function sub_procs(filenum::Int64, r1_filename::String, r2_filename::String, nfile::Int64, julia_command::Cmd)
+    #             println("Atria: ($filenum/$nfile) $r1_filename $r2_filename")
+    #             new_args = ARGS[1:end]
+    #             # presumption: --procs is specified in ARGS
+    #             new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
 
-                logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
-                try
-                    run(pipeline(`$julia_command -t $nthread -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
-                catch e
-                    rethrow(e)
-                end
+    #             logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
+    #             try
+    #                 run(pipeline(`$julia_command -t $nthread -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
+    #             catch e
+    #                 rethrow(e)
+    #             end
 
-                return 0
-            end
-            ARGS_backup = deepcopy(ARGS) # cannot assign ARGS to Base.ARGS from module Main
-            @eval @everywhere empty!(ARGS)
-            @eval @everywhere append!(ARGS, $ARGS_backup)
-            @eval @everywhere nthread = $nthread
-            @eval @everywhere sub_procs = $sub_procs
-            @eval @everywhere outdir = $outdir
-            @info "Parallel mode: logs saved to $outdir/*.atria.stdlog"
-            pmap(sub_procs,
-                file_range,
-                args["read1"],
-                args["read2"],
-                repeat(Int64[nfile], nfile),
-                repeat(Cmd[julia_command], nfile)
-            )
-            file_range = 1:0  # no file will be processed in the main thread.
-            return 0  # do not run Atria in the main thread. end of julia_wrapper_atria()
-        end
-    end
+    #             return 0
+    #         end
+    #         ARGS_backup = deepcopy(ARGS) # cannot assign ARGS to Base.ARGS from module Main
+    #         @eval @everywhere empty!(ARGS)
+    #         @eval @everywhere append!(ARGS, $ARGS_backup)
+    #         @eval @everywhere nthread = $nthread
+    #         @eval @everywhere sub_procs = $sub_procs
+    #         @eval @everywhere outdir = $outdir
+    #         @info "Parallel mode: logs saved to $outdir/*.atria.stdlog"
+    #         pmap(sub_procs,
+    #             file_range,
+    #             args["read1"],
+    #             args["read2"],
+    #             repeat(Int64[nfile], nfile),
+    #             repeat(Cmd[julia_command], nfile)
+    #         )
+    #         file_range = 1:0  # no file will be processed in the main thread.
+    #         return 0  # do not run Atria in the main thread. end of julia_wrapper_atria()
+    #     end
+    # end
 
 
     #================== Arguments ====================#

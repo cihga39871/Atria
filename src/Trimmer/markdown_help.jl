@@ -85,13 +85,11 @@ Atria integrated several trimming and read filtration methods. It does the follo
 
    - specify complexity threshold: `--min-complexity 0.3` (default: 0.3)
 
-### Parallel computing
+### Parallel (multi-threading) computing
 
-Atria has two parallel methods: **multi-threading** and **multi-core**. You can enable them both.
+1. Specify number of threads to use: `-t 8` or `--threads 8`. (Default: 8)
 
-1. **Multi-threading** uses multiple threads to process one sample. The speed marginal gain drops as the threads increase: `-t 8` or `--threads 8`. (Default: 8)
-2. **Multi-core** processes multiple samples at the same time. No marginal gain loses if IO and memory are sufficient: `-p 4` or `--procs 4`. (Default: disabled)
-3. If memory is not sufficient, use `--log2-chunk-size INT` where INT is from 23 to 25. Memory usage reduces exponentially as it decreases.
+2. If memory is not sufficient, use `--log2-chunk-size INT` where INT is from 23 to 25. Memory usage reduces exponentially as it decreases.
 """
 
 function atria_markdown_help()

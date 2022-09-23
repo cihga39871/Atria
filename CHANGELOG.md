@@ -1,5 +1,9 @@
 # Atria Change Log
 
+## v3.2.0
+
+- Remove multi-proc mode since it is unstable.
+
 ## v3.1.4
 
 - Logging: new logging for versions and sample completion.

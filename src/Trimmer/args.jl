@@ -11,12 +11,6 @@ function parsing_args(args::Vector; exit_after_help = true)
             metavar = "INT"
             default = Threads.nthreads()
             arg_type = Int
-        "--procs", "-p"
-            # hidden feature: --procs 8onlyrun2 will only run the second pair-end FASTQ!
-            help = "process at most INT samples at the same time (multi-core parallel)"
-            metavar = "INT"
-            default = "1"
-            arg_type = String
         "--log2-chunk-size"
             help = "read at most 2^INDEX bits each time. Suggest to process 200,000 reads each time. Reduce INDEX to lower the memory usage."
             metavar = "INDEX"
@@ -230,6 +224,15 @@ function parsing_args(args::Vector; exit_after_help = true)
             default = 0.3
             metavar = "FLOAT"
             arg_type = Float64
+    end
+
+    add_arg_group!(settings, "legacy arguments")
+    @add_arg_table! settings begin
+        "--procs", "-p"
+        help = "igored (multi-proc is disabled)"
+        metavar = "INT"
+        default = "1"
+        arg_type = String
     end
     return parse_args(args, settings)
 end
