@@ -11,7 +11,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         return 0
     end
     args_range_test(args)
-
+    
+    nthread = args["threads"]
     outdir = args["output-dir"]
 
     #================== Parallel control ====================
@@ -31,7 +32,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     index_procs = findfirst(f_procs, ARGS)
     if index_procs != nothing  # argument --procs is specified
         nparallel = tryparse(Int64, args["procs"])
-        if nparallel == nothing  # --procs might be 4onlyrun2
+        if isnothing(nparallel)  # --procs might be 4onlyrun2
             if occursin(r"\d+onlyrun\d+", args["procs"])
                 _filenum = parse(Int64, match(r"\d+onlyrun(\d+)$", args["procs"]).captures[1])
                 file_range = _filenum:_filenum
@@ -51,7 +52,6 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                 new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
 
                 logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
-                nthread = Threads.nthreads()
                 try
                     run(pipeline(`$julia_command -t $nthread -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
                 catch e
@@ -63,9 +63,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             ARGS_backup = deepcopy(ARGS) # cannot assign ARGS to Base.ARGS from module Main
             @eval @everywhere empty!(ARGS)
             @eval @everywhere append!(ARGS, $ARGS_backup)
+            @eval @everywhere nthread = $nthread
             @eval @everywhere sub_procs = $sub_procs
             @eval @everywhere outdir = $outdir
-            @info "Parallel mode: logs saved to $outdir/*.atria.(std)log(.json)"
+            @info "Parallel mode: logs saved to $outdir/*.atria.stdlog"
             pmap(sub_procs,
                 file_range,
                 args["read1"],
@@ -82,7 +83,6 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     #================== Arguments ====================#
 
     command                  = `$ARGS`
-    nthread                  =  args["threads"            ]
     max_chunk_size           =  2 ^ args["log2-chunk-size"]
     # polyX
     min_poly_length          = args["poly-length"            ]
