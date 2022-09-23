@@ -1,8 +1,11 @@
 # Atria Change Log
 
-## dev
+## v3.1.4
 
 - Logging: new logging for versions and sample completion.
+- Fix v3.1.3: multi-proc mode: Julia v1.8.1 does not allow assign new ARGS, and add `-t nthread` in `julia_args`.
+- Fix v3.1.3: pe-consensus: error when `insert_size = -1`; fix trimming when `insert_size = -1`.
+- Benchmark `iscomplement` in Atria v3.1.2 and that in BioSequences, and found it is good to stick to BioSequences.
 
 ## v3.1.3
 
