@@ -84,6 +84,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
     command                  = `$ARGS`
     max_chunk_size           =  2 ^ args["log2-chunk-size"]
+    force                    = args["force"]
     # polyX
     min_poly_length          = args["poly-length"            ]
     poly_mismatch_per_16mer  = args["poly-mismatch-per-16mer"]
@@ -520,6 +521,17 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         file1 = args["read1"][filenum]
         file2 = args["read2"][filenum]
 
+        # check whether this sample is processed before
+        outjson = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.log.json", count=1))
+        if force
+            rm(outjson, force=true)
+        else
+            if isfile(outjson) && filesize(outjson) > 0
+                @warn "Skip completed analysis: $outjson (use --force to disable the feature)" _module=nothing _group=nothing _id=nothing _file=nothing
+                continue
+            end
+        end
+
         isingzip = occursin(r"\.gz$"i, file1)
         isinbzip2 = occursin(r"\.bz2$"i, file1)
         outcompress = uppercase(args["compress"])
@@ -548,7 +560,6 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         end
 
         outlog = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.log", count=1))
-        outjson = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.log.json", count=1))
 
 
         #===== file IO =====#

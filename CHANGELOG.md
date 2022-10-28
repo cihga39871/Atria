@@ -1,5 +1,10 @@
 # Atria Change Log
 
+
+## v3.2.1
+
+- Feature: automatically skip completed analyses. Use --force or -f to disable the feature.
+
 ## v3.2.0
 
 - Remove multi-proc mode since it is unstable.

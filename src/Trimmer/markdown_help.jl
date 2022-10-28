@@ -23,11 +23,13 @@ The input files should be paired-end FastQ(.gz|.bz2) files (in the same order), 
 
 Output all files to a directory: `-o PATH` or `--output-dir PATH`. Default is the current directory.
 
+Atria skips completed analysis by default. Use `-f` or `--force` to disable the feature.
+
 ### Trimming methods
 
 Atria integrated several trimming and read filtration methods. It does the following sequentially.
 
-1. **Poly X Tail Trimming**: remove read tail with poly X.
+1. **Poly X Tail Trimming**: remove remove poly-X tails.
 
    suggest to enable `--polyG` for Illumina NextSeq/NovaSeq data.
 

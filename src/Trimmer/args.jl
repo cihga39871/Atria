@@ -16,6 +16,9 @@ function parsing_args(args::Vector; exit_after_help = true)
             metavar = "INDEX"
             default = 26
             arg_type = Int
+        "--force", "-f"
+            help = "force to analyze all samples; not skip completed ones"
+            action = :store_true
     end
     add_arg_group!(settings, "input/output: input read 1 and read 2 should be in the same order")
     @add_arg_table! settings begin
@@ -229,7 +232,7 @@ function parsing_args(args::Vector; exit_after_help = true)
     add_arg_group!(settings, "legacy arguments")
     @add_arg_table! settings begin
         "--procs", "-p"
-        help = "igored (multi-proc is disabled)"
+        help = "ignored (multi-proc is disabled)"
         metavar = "INT"
         default = "1"
         arg_type = String
@@ -270,9 +273,13 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
         ispass = false
     end
 
-    if !occursin(r"^[1-9][0-9]*$|^[1-9][0-9]*onlyrun\d+$", args["procs"])
-        @error "--procs INT must be positive integer" _module=nothing _group=nothing _id=nothing _file=nothing
-        ispass = false
+    # if !occursin(r"^[1-9][0-9]*$|^[1-9][0-9]*onlyrun\d+$", args["procs"])
+    #     @error "--procs INT must be positive integer" _module=nothing _group=nothing _id=nothing _file=nothing
+    #     ispass = false
+    # end
+    if args["procs"] != "1"
+        @warn "--procs (-p) is removed from Atria v3.2.0" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = true
     end
 
     if args["log2-chunk-size"] < 20 || args["log2-chunk-size"] > 30
