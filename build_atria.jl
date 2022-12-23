@@ -118,7 +118,7 @@ ATRIA="$DIR/_atria"
 
 precompile_execution_file = joinpath("test", "runtests.jl")
 
-create_app(".", app_path, incremental = false, force = true, filter_stdlibs = true, sysimage_build_args = `-O3 --check-bounds=no --math-mode=fast`, precompile_execution_file = precompile_execution_file, executables = ["_atria" => "julia_main"])
+create_app(".", app_path, incremental = false, force = true, filter_stdlibs = false, sysimage_build_args = `-O3 --check-bounds=no --math-mode=fast`, precompile_execution_file = precompile_execution_file, executables = ["_atria" => "julia_main"])
 
 # ext = Sys.isapple() ? "dylib" : "so"
 # isfile(joinpath(app_path, "bin", "AtriaEntry.$ext"))
