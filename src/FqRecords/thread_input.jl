@@ -261,9 +261,9 @@ function load_fqs_threads!(
         push!(tasks2, i_task)
     end
     # vr1s_stops = map(fetch, tasks)
-    n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
+    n_r1 = FqRecords.append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
     # vr2s_stops = map(fetch, tasks2)
-    n_r2 = append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
+    n_r2 = FqRecords.append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
 
     (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
 
@@ -877,10 +877,10 @@ Return number of reads in `rs` are valid.
         i_read += 1
         # @info "test" i_read idx_fq_start
         idx_id_start = idx_fq_start
-        idx_seq_start, n_id = index_next_line_and_n_this_line(inbytes, idx_id_start, idx_fq_end)
-        idx_des_start, n_seq = index_next_line_and_n_this_line(inbytes, idx_seq_start, idx_fq_end)
-        idx_qual_start, n_des = index_next_line_and_n_this_line(inbytes, idx_des_start, idx_fq_end)
-        idx_fq_start, n_qual = index_next_line_and_n_this_line(inbytes, idx_qual_start, idx_fq_end)
+        idx_seq_start, n_id = FqRecords.index_next_line_and_n_this_line(inbytes, idx_id_start, idx_fq_end)
+        idx_des_start, n_seq = FqRecords.index_next_line_and_n_this_line(inbytes, idx_seq_start, idx_fq_end)
+        idx_qual_start, n_des = FqRecords.index_next_line_and_n_this_line(inbytes, idx_des_start, idx_fq_end)
+        idx_fq_start, n_qual = FqRecords.index_next_line_and_n_this_line(inbytes, idx_qual_start, idx_fq_end)
         if i_read <= n_read
             # TODO: rs_i_read = rs[i_read]
             r = @inbounds rs[i_read]
@@ -889,7 +889,7 @@ Return number of reads in `rs` are valid.
             bitsafe!(r.seq)
             safe_copyto!(r.des, inbytes, idx_des_start, n_des)
             safe_copyto!(r.qual, inbytes, idx_qual_start, n_qual)
-            update_prob_from_qual(r, quality_offset=quality_offset)
+            FqRecords.update_prob_from_qual(r, quality_offset=quality_offset)
         else
             id = @inbounds inbytes[idx_id_start:(idx_id_start + n_id - 1)]
             des = @inbounds inbytes[idx_des_start:(idx_des_start + n_des - 1)]
