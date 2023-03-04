@@ -1,4 +1,5 @@
 
+@noinline function test_fq_records()
 @testset "FqRecords" begin
 
     r = fqreadrecord("@SRR7243169.1 1 length=301
@@ -218,4 +219,5 @@ CCCCCG##GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGDGGGGGGGGGGGGGGGGFGGGGGGGGGGGF
     @test r1_seq_rc[1:160-2] == r2.seq[3:end] # r2's Ns were fixed.
 
 
+end
 end
