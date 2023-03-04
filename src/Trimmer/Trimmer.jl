@@ -2,8 +2,9 @@
 module Trimmer
 
 export julia_wrapper_atria,
-julia_wrapper_atria_single_end,
+julia_wrapper_atria_se,
 julia_wrapper_detect_adapter,
+julia_wrapper_detect_adapter_pe,
 sub_procs, sub_procs_single_end,
 atria_markdown_help,
 processing_reads!,
@@ -44,5 +45,6 @@ include("wrapper.jl")
 include("wrapper_single_end.jl")
 include("detect_adapter.jl")
 include("wrapper_detect_adapter.jl")
+include("wrapper_detect_adapter_pair_end.jl")
 
 end

@@ -1,4 +1,4 @@
-
+@noinline function test_trimmer_and_benchmark()
 @testset "trimmer_and_benchmark" begin
 
     pwd_backup = pwd()
@@ -92,4 +92,5 @@
         cd(pwd_backup)
         rm(tmp_path, recursive=true, force=true)
     end
+end
 end
