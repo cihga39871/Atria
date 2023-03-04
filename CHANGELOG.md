@@ -2,7 +2,8 @@
 
 ## v3.2.2
 
-- Optimize: speed up drastically.
+- Optimize: speed up for threads <= 2.
+- Fix: `atria test` should not depend on source files.
 
 ## v3.2.1
 

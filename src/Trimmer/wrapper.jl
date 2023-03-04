@@ -578,11 +578,11 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         end
 
         if outcompress == "GZIP"
-            io1out = open(`pigz -p$nthread -c`, open(outfile1, "w"), write=true, read=false)
-            io2out = open(`pigz -p$nthread -c`, open(outfile2, "w"), write=true, read=false)
+            io1out = open(`pigz -p$halfthread -c`, open(outfile1, "w"), write=true, read=false)
+            io2out = open(`pigz -p$halfthread -c`, open(outfile2, "w"), write=true, read=false)
         elseif outcompress == "BZIP2"
-            io1out = open(`pbzip2 -p$nthread -c`, open(outfile1, "w"), write=true, read=false)
-            io2out = open(`pbzip2 -p$nthread -c`, open(outfile2, "w"), write=true, read=false)
+            io1out = open(`pbzip2 -p$halfthread -c`, open(outfile1, "w"), write=true, read=false)
+            io2out = open(`pbzip2 -p$halfthread -c`, open(outfile2, "w"), write=true, read=false)
         else
             io1out = open(outfile1, "w")
             io2out = open(outfile2, "w")
