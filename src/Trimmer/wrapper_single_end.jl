@@ -217,7 +217,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             resize!(isgoods, n_reads)
         end
         # split reads to N reads per batch
-        Threads.@threads for reads_start in 1:512:n_reads
+        Threads.@threads :static for reads_start in 1:512:n_reads
             reads_end = min(reads_start + 511, n_reads)
             reads_range = reads_start:reads_end
             thread_id = Threads.threadid()
@@ -401,7 +401,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         time_read_processing = time()
 
         # the first cycle to generate compiled code?
-        function cycle_wrapper_single_end()
+        function cycle_wrapper_single_end(task_write1)
             nbatch += 1
             n_r1_before = length(r1s) - n_reads
 
@@ -425,21 +425,14 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
             Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
 
-            #= debug
-            for i in eachindex(r1s)
-                @info i
-                read_processing!(r1s[i], 1)
-            end
-            continue
-            =#
-
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
-            write_fqs_threads!(
+
+            task_write1 = write_fqs_threads!(
                 io1out::IO,
                 outr1s::Vector{Vector{UInt8}},
                 r1s::Vector{FqRecord},
-                n_reads::Int, isgoods_in_range)
+                n_reads::Int, isgoods_in_range, task_write1)
 
             n_goods = fetch(task_sum)
             total_n_goods += n_goods
@@ -447,16 +440,20 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
             # @info "Cycle $nbatch: processed $n_reads reads ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
             @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
+            return task_write1
         end
 
+        task_write1 = Threads.@spawn 1
         while !eof(io1::IO)
-            cycle_wrapper_single_end()
+            task_write1 = cycle_wrapper_single_end(task_write1)
         end
 
         @info "ATRIA COMPLETE" read=outfile1
         with_logger(logger) do
             @info "ATRIA COMPLETE" read=outfile1
         end
+
+        wait(task_write1)
 
         time_read_processing = time() - time_read_processing
 

@@ -1,41 +1,69 @@
+"""
+    bytes_tmp1 = Vector{UInt8}(undef, 67108864) # 2^26
+
+Used for writebytes(io1out::CodecZlibIO, outr1s, range_filter, bytes_tmp1)
+"""
+bytes_tmp1 = Vector{UInt8}(undef, 67108864) # 2^26
+bytes_tmp2 = Vector{UInt8}(undef, 67108864) # 2^26
 
 """
     write_fqs_threads!(io1out::IO, io2out::IO,
         outr1s::Vector{Vector{UInt8}}, outr2s::Vector{Vector{UInt8}},
         r1s::Vector{FqRecord}, r2s::Vector{FqRecord},
-        n_reads::Int, range_filter)
+        n_reads::Int, range_filter, task_write1, task_write2)
 
 The interface to write paired FASTQ reads.
 """
+function write_fqs_threads!(io1out::IOStream, io2out::IOStream,
+    outr1s::Vector{Vector{UInt8}}, outr2s::Vector{Vector{UInt8}},
+    r1s::Vector{FqRecord}, r2s::Vector{FqRecord},
+    n_reads::Int, range_filter, task_write1, task_write2)
+
+    wait(task_write1)  # last task
+    FqRecord2StringVec!(outr1s::Vector{Vector{UInt8}}, r1s::Vector{FqRecord}, n_reads::Int)
+    task_write1 = Threads.@spawn writebytes(io1out, outr1s, range_filter) # new task
+
+    wait(task_write2)
+    FqRecord2StringVec!(outr2s::Vector{Vector{UInt8}}, r2s::Vector{FqRecord}, n_reads::Int)
+    
+    task_write2 = Threads.@spawn writebytes(io2out, outr2s, range_filter)
+    task_write1, task_write2
+end
 function write_fqs_threads!(io1out::IO, io2out::IO,
     outr1s::Vector{Vector{UInt8}}, outr2s::Vector{Vector{UInt8}},
     r1s::Vector{FqRecord}, r2s::Vector{FqRecord},
-    n_reads::Int, range_filter)
+    n_reads::Int, range_filter, task_write1, task_write2)
 
+    wait(task_write1)  # last task
     FqRecord2StringVec!(outr1s::Vector{Vector{UInt8}}, r1s::Vector{FqRecord}, n_reads::Int)
-    task_write = Threads.@spawn writebytes(io1out, outr1s, range_filter)
+    task_write1 = Threads.@spawn writebytes(io1out, outr1s, range_filter, bytes_tmp1) # new task
 
+    wait(task_write2)
     FqRecord2StringVec!(outr2s::Vector{Vector{UInt8}}, r2s::Vector{FqRecord}, n_reads::Int)
-    wait(task_write)
-    writebytes(io2out, outr2s, range_filter)
+    
+    task_write2 = Threads.@spawn writebytes(io2out, outr2s, range_filter, bytes_tmp2)
+    task_write1, task_write2
 end
 
-"""
-    write_fqs_threads!(io1out::IO,
-        outr1s::Vector{Vector{UInt8}},
-        r1s::Vector{FqRecord},
-        n_reads::Int, range_filter)
+function write_fqs_threads!(io1out::IOStream,
+    outr1s::Vector{Vector{UInt8}},
+    r1s::Vector{FqRecord},
+    n_reads::Int, range_filter, task_write1)
 
-The interface to write paired FASTQ reads.
-"""
+    wait(task_write1)
+    FqRecord2StringVec!(outr1s::Vector{Vector{UInt8}}, r1s::Vector{FqRecord}, n_reads::Int)
+    Threads.@spawn writebytes(io1out, outr1s, range_filter)
+end
 function write_fqs_threads!(io1out::IO,
     outr1s::Vector{Vector{UInt8}},
     r1s::Vector{FqRecord},
-    n_reads::Int, range_filter)
+    n_reads::Int, range_filter, task_write1)
 
+    wait(task_write1)
     FqRecord2StringVec!(outr1s::Vector{Vector{UInt8}}, r1s::Vector{FqRecord}, n_reads::Int)
-    writebytes(io1out, outr1s, range_filter)
+    Threads.@spawn writebytes(io1out, outr1s, range_filter, bytes_tmp1)
 end
+
 
 """
     FqRecord2StringVec!(out::Vector{UInt8}, r::FqRecord)
@@ -138,9 +166,9 @@ end
     nothing
 end
 
-bytes_tmp = Vector{UInt8}(undef, 67108864) # 2^26
 
-@inline function writebytes(io::IO, outrs::Vector{Vector{UInt8}}, filters::SubArray{Bool,1,Array{Bool,1},Tuple{UnitRange{Int64}},true}, bytes_tmp::Vector{UInt8} = bytes_tmp)::Nothing
+
+@inline function writebytes(io::IO, outrs::Vector{Vector{UInt8}}, filters::SubArray{Bool,1,Array{Bool,1},Tuple{UnitRange{Int64}},true}, bytes_tmp::Vector{UInt8})::Nothing
     # for CodecZlib streams, call write once to increase speed
 
     # method 1: 112s

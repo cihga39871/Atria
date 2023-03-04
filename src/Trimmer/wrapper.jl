@@ -328,6 +328,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             end
         end
 
+        is_concensused = false
+
         if r12_score > $trim_score
             # < 0: no adapter / pe matched
             is_true_positive = !is_false_positive(r1_insert_size, r1_insert_size_pe, length(r1.seq),
@@ -337,7 +339,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                 @label trim
                 @static if $do_consensus_calling
                     if r1_insert_size_decision == r2_insert_size_decision && r1_insert_size_decision > 0
-                        pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
+                        is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                     end
                 end
                 # r1_insert_size_decision >= 0 && tail_trim!(r1::FqRecord, r1_insert_size_decision)
@@ -364,19 +366,19 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             else
                 # no adapter, pe consensus for short overlap
                 @static if $do_consensus_calling
-                    pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
+                    is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                 end
             end
         else
             # no adapter, pe consensus for short overlap
             @static if $do_consensus_calling
-                pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance_consensus, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
+                is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance_consensus, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
             end
         end
 
         # stats in FqRecord:
         @static if $do_read_stats
-            adapter_trimming_stat = "Res\t$r12_trim\t$(length(r1.seq))\t$(length(r2.seq))\t|R1\t$r1_insert_size\t$r1_adapter_score\t$r1_insert_size_pe\t$r1_pe_score\t|R2\t$r2_insert_size\t$r2_adapter_score\t$r2_insert_size_pe\t$r2_pe_score\t|prob\t$r1_adapter_prob\t$r2_adapter_prob\t$r1_pe_prob\t$r2_pe_prob\t$r1_head_prob\t$r2_head_prob"
+            adapter_trimming_stat = "Res\t$r12_trim\t$(length(r1.seq))\t$(length(r2.seq))\t|R1\t$r1_insert_size\t$r1_adapter_score\t$r1_insert_size_pe\t$r1_pe_score\t|R2\t$r2_insert_size\t$r2_adapter_score\t$r2_insert_size_pe\t$r2_pe_score\t|prob\t$r1_adapter_prob\t$r2_adapter_prob\t$r1_pe_prob\t$r2_pe_prob\t$r1_head_prob\t$r2_head_prob\t|consensus\t$is_concensused"
             append!(r2.des, adapter_trimming_stat)
         end
     end : nothing
@@ -407,7 +409,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             resize!(isgoods, n_reads)
         end
         # split reads to N reads per batch
-        Threads.@threads  for reads_start in 1:256:n_reads
+        Threads.@threads :static for reads_start in 1:256:n_reads
             reads_end = min(reads_start + 255, n_reads)
             reads_range = reads_start:reads_end
             thread_id = Threads.threadid()
@@ -524,11 +526,11 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         end
 
         if outcompress == "GZIP"
-            io1out = open(`pigz -p$nthread -c`, open(outfile1, "w"), write=true, read=false)
-            io2out = open(`pigz -p$nthread -c`, open(outfile2, "w"), write=true, read=false)
+            io1out = open(`pigz -p$halfthread -c`, open(outfile1, "w"), write=true, read=false)
+            io2out = open(`pigz -p$halfthread -c`, open(outfile2, "w"), write=true, read=false)
         elseif outcompress == "BZIP2"
-            io1out = open(`pbzip2 -p$nthread -c`, open(outfile1, "w"), write=true, read=false)
-            io2out = open(`pbzip2 -p$nthread -c`, open(outfile2, "w"), write=true, read=false)
+            io1out = open(`pbzip2 -p$halfthread -c`, open(outfile1, "w"), write=true, read=false)
+            io2out = open(`pbzip2 -p$halfthread -c`, open(outfile2, "w"), write=true, read=false)
         else
             io1out = open(outfile1, "w")
             io2out = open(outfile2, "w")
@@ -606,7 +608,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         time_read_processing = time()
 
         # the first cycle to generate compiled code?
-        function cycle_wrapper()
+        function cycle_wrapper(task_write1, task_write2)
             nbatch += 1
             n_r1_before = length(r1s) - n_reads
             n_r2_before = length(r2s) - n_reads
@@ -638,19 +640,17 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             # it only get the sizes, did not change the sizes. Size changing is done in the "Read" part.
             chunk_size1, chunk_size2 = adjust_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
 
-            # check_fq_ids(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, n_reads::Int)::nothing
-
             # processing reads
             Base.invokelatest(processing_reads_threads!, r1s, r2s, isgoods, n_reads)
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
 
-            write_fqs_threads!(
+            task_write1, task_write2 = write_fqs_threads!(
                 io1out::IO, io2out::IO,
                 outr1s::Vector{Vector{UInt8}}, outr2s::Vector{Vector{UInt8}},
                 r1s::Vector{FqRecord}, r2s::Vector{FqRecord},
-                n_reads::Int, isgoods_in_range)
+                n_reads::Int, isgoods_in_range, task_write1, task_write2)
 
             n_goods = fetch(task_sum)
             total_n_goods += n_goods
@@ -659,16 +659,22 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             # @info "Cycle $nbatch: processed $n_reads read pairs ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
 
             @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods pairs; (copied $ncopied/$total_read_copied_in_loading reads)"
+            return task_write1, task_write2
         end
 
+        task_write1 = Threads.@spawn 1
+        task_write2 = Threads.@spawn 1
         while !eof(io1::IO) || !eof(io2::IO)
-            cycle_wrapper()
+            task_write1, task_write2 = cycle_wrapper(task_write1, task_write2)
         end
         
         @info "ATRIA COMPLETE" read1=outfile1 read2=outfile2
         with_logger(logger) do
             @info "ATRIA COMPLETE" read1=outfile1 read2=outfile2
         end
+
+        wait(task_write1)
+        wait(task_write2)
 
         time_read_processing = time() - time_read_processing
 

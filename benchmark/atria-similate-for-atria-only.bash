@@ -3,11 +3,15 @@ cd ~/analysis/atria-benchmark/julia1.8.5
 
 a1=AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
 a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+
 r1="reads_diff_indel.R1.fastq"
 r2="reads_diff_indel.R2.fastq"
 
-atria_old=~/projects/atria/app-3.2.1/bin/atria
-atria_new=/home/jc/projects/atria-master/atria-3.2.1-julia1.8.5/bin/atria
+r1="reads_diff_indel.R1.fastq.gz"
+r2="reads_diff_indel.R2.fastq.gz"
+
+atria_old=/home/jc/projects/atria/app-3.2.1/bin/atria
+atria_new=atria
 
 . $atria/benchmark/trimming-functions.bash
 
@@ -22,7 +26,7 @@ run_atria(){
         num_threads=$1
     fi
     /usr/bin/time -v $atria_old --no-consensus \
-        -r $r1 $r1 $r1 $r1 -R $r2 $r2 $r2 $r2 \
+        -r $r1 $r1 -R $r2 $r2 \
         -o Atria-old \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
@@ -34,7 +38,7 @@ run_atria_consensus(){
         num_threads=$1
     fi
     /usr/bin/time -v $atria_old \
-        -r $r1 $r1 $r1 $r1 -R $r2 $r2 $r2 $r2 \
+        -r $r1 $r1 -R $r2 $r2 \
         -o Atria-consensus-old \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
@@ -46,7 +50,7 @@ run_atria_new(){
         num_threads=$1
     fi
     /usr/bin/time -v $atria_new --no-consensus \
-        -r $r1 $r1 $r1 $r1 -R $r2 $r2 $r2 $r2 \
+        -r $r1 $r1 -R $r2 $r2 \
         -o Atria-new \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
@@ -58,7 +62,7 @@ run_atria_consensus_new(){
         num_threads=$1
     fi
     /usr/bin/time -v $atria_new \
-        -r $r1 $r1 $r1 $r1 -R $r2 $r2 $r2 $r2 \
+        -r $r1 $r1 -R $r2 $r2 \
         -o Atria-consensus-new \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force

@@ -4,7 +4,10 @@
 
 include(joinpath(@__DIR__, "Atria.jl"))
 
-using ProfileView
+# using ProfileView
+
+empty!(ARGS)
+append!(ARGS, ["-r", "/home/jc/analysis/atria-benchmark/julia1.8.5/reads_diff_indel.R1.fastq", "-R", "/home/jc/analysis/atria-benchmark/julia1.8.5/reads_diff_indel.R2.fastq", "-t", "8", "-o", "/home/jc/analysis/atria-benchmark/julia1.8.5/outprofile", "-f"])
 
 @profview Atria.julia_main()
 @profview Atria.julia_main()
