@@ -1,5 +1,8 @@
 # Atria Change Log
 
+## v3.2.2
+
+- Optimize: speed up drastically.
 
 ## v3.2.1
 
