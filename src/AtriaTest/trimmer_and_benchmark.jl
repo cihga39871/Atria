@@ -32,18 +32,18 @@
         Benchmark.julia_wrapper_randtrim(["-h"])
 
         if Sys.iswindows()
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-c", "8", "--compress", "gz", "-f"])
+            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
         else
             run(`pigz --keep peReadSimulated.R1.randtrim.fastq`)
             run(`pigz --keep peReadSimulated.R2.randtrim.fastq`)
-            Trimmer.julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "gz", "--check-identifier", "-f"])
-            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "gz", "-f"])
-            julia_wrapper_detect_adapter(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "gz"])
+            Trimmer.julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "--check-identifier", "-f"])
+            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
+            julia_wrapper_detect_adapter(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"])
 
             run(`pbzip2 peReadSimulated.R1.randtrim.fastq`)
             run(`pbzip2 peReadSimulated.R2.randtrim.fastq`)
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-c", "8", "--compress", "bz2", "--check-identifier", "-f"])
-            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-c", "8", "--compress", "bz2", "-f"])
+            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "bz2", "--check-identifier", "-f"])
+            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "bz2", "-f"])
         end
 
 

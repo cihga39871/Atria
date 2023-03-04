@@ -159,13 +159,23 @@ function parsing_args(args::Vector; exit_after_help = true)
 
     add_arg_group!(settings, "hard clipping: trim a fixed length (after adapter trimming)")
     @add_arg_table! settings begin
-        "--clip-after", "-C"
-            help = "hard clip the 3' tails to contain only INT bases. 0 to disable."
+        "--clip-after-r1", "-b"
+            help = "hard clip the 3' tails of R1 to contain only INT bases. 0 to disable."
             default = 0
             metavar = "INT"
             arg_type = Int64
-        "--clip5", "-c"
-            help = "remove the first INT bases from 5' end."
+        "--clip-after-r2", "-B"
+            help = "hard clip the 3' tails of R2 to contain only INT bases. 0 to disable."
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip5-r1", "-e"
+            help = "remove the first INT bases from 5' front of R1."
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip5-r2", "-E"
+            help = "remove the first INT bases from 5' front of R2."
             default = 0
             metavar = "INT"
             arg_type = Int64
@@ -232,11 +242,22 @@ function parsing_args(args::Vector; exit_after_help = true)
     add_arg_group!(settings, "legacy arguments")
     @add_arg_table! settings begin
         "--procs", "-p"
-        help = "ignored (multi-proc is disabled)"
-        metavar = "INT"
-        default = "1"
-        arg_type = String
+            help = "ignored (multi-proc is disabled)"
+            metavar = "INT"
+            default = "1"
+            arg_type = String
+        "--clip-after", "-C"
+            help = "removed (use --clip-after-r1 and --clip-after-r2 instead)"
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip5", "-c"
+            help = "removed (use --clip5-r1 and --clip5-r2 instead)"
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
     end
+
     return parse_args(args, settings)
 end
 
@@ -386,11 +407,27 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     end
 
     # hard clip
-    if 0 < args["clip-after"] < 30
-        @warn "--clip-after -C INT is very small. Did you mis-understand this option? It does not clip INT bases from 3' end, but only keep the first INT bases of each read. For example, if you want to clip 5 bases from 3' end, and your read length is 101, you should use `--clip-after 96` or `-C 96`." INT=args["clip-after"] _module=nothing _group=nothing _id=nothing _file=nothing
+    if args["clip-after"] != 0
+        @error "--clip-after -C is removed. Please use --clip-after-r1 and --clip-after-r2 instead" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
     end
-    if args["clip5"] > 70
-        @warn "--clip5 -c INT is very large. Did you mis-understand this option? It does not keep the last INT bases of each read, but clip the first INT bases from 5' end." INT=args["clip5"] _module=nothing _group=nothing _id=nothing _file=nothing
+    if args["clip5"] != 0
+        @error "--clip5 -c is removed. Please use --clip5-r1 and --clip5-r2 instead" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
+
+    if 0 < args["clip-after-r1"] < 30
+        @warn "--clip-after-r1 -b INT is very small. Did you mis-understand this option? It does not clip INT bases from 3' end, but only keep the first INT bases of each read. For example, if you want to clip 5 bases from 3' end, and your read length is 101, you should use `--clip-after-r1 96` or `-b 96`." INT=args["clip-after-r1"] _module=nothing _group=nothing _id=nothing _file=nothing
+    end
+    if 0 < args["clip-after-r2"] < 30
+        @warn "--clip-after-r2 -B INT is very small. Did you mis-understand this option? It does not clip INT bases from 3' end, but only keep the first INT bases of each read. For example, if you want to clip 5 bases from 3' end, and your read length is 101, you should use `--clip-after-r2 96` or `-B 96`." INT=args["clip-after-r2"] _module=nothing _group=nothing _id=nothing _file=nothing
+    end
+
+    if args["clip5-r1"] > 70
+        @warn "--clip5-r1 -e INT is very large. Did you mis-understand this option? It does not keep the last INT bases of each read, but clip the first INT bases from 5' end." INT=args["clip5-r1"] _module=nothing _group=nothing _id=nothing _file=nothing
+    end
+    if args["clip5-r2"] > 70
+        @warn "--clip5-r2 -E INT is very large. Did you mis-understand this option? It does not keep the last INT bases of each read, but clip the first INT bases from 5' end." INT=args["clip5-r1"] _module=nothing _group=nothing _id=nothing _file=nothing
     end
 
     # quality trimming

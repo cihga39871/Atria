@@ -15,70 +15,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     nthread = args["threads"]
     outdir = args["output-dir"]
 
-    #================== Parallel control (masked after v3.1.4) ====================
-    --procs 4onlyrun2 is a hidden feature for parallel computing...
-    onlyrun2 means only run the second read pair fastqs.
-    MECHANISM:
-    when -p | --procs is specified, Atria will launch additional worker processes.
-    the controller process (main process) will only manage worker processes,
-    and will not run samples.
-    the new workers will run additional Atria with a modified ARGS: -p XonlyrunN
-    onlyrunN refresh `file_range` to N:N,
-    so one worker will only run one sample each time. =#
-
     nfile = length(args["read1"])
     file_range = 1:nfile
-
-    # index_procs = findfirst(f_procs, ARGS)
-    # if index_procs != nothing  # argument --procs is specified
-    #     nparallel = tryparse(Int64, args["procs"])
-    #     if isnothing(nparallel)  # --procs might be 4onlyrun2
-    #         if occursin(r"\d+onlyrun\d+", args["procs"])
-    #             _filenum = parse(Int64, match(r"\d+onlyrun(\d+)$", args["procs"]).captures[1])
-    #             file_range = _filenum:_filenum
-    #         else
-    #             @error "--procs INT must be positive integer" _module=:. _group=:. _id=:. _file="."
-    #             exit(3)
-    #         end
-    #     else
-    #         # start run this code as parallel.
-    #         addprocs(nparallel)
-    #         julia_command = Base.julia_cmd()
-
-    #         function sub_procs(filenum::Int64, r1_filename::String, r2_filename::String, nfile::Int64, julia_command::Cmd)
-    #             println("Atria: ($filenum/$nfile) $r1_filename $r2_filename")
-    #             new_args = ARGS[1:end]
-    #             # presumption: --procs is specified in ARGS
-    #             new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
-
-    #             logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
-    #             try
-    #                 run(pipeline(`$julia_command -t $nthread -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
-    #             catch e
-    #                 rethrow(e)
-    #             end
-
-    #             return 0
-    #         end
-    #         ARGS_backup = deepcopy(ARGS) # cannot assign ARGS to Base.ARGS from module Main
-    #         @eval @everywhere empty!(ARGS)
-    #         @eval @everywhere append!(ARGS, $ARGS_backup)
-    #         @eval @everywhere nthread = $nthread
-    #         @eval @everywhere sub_procs = $sub_procs
-    #         @eval @everywhere outdir = $outdir
-    #         @info "Parallel mode: logs saved to $outdir/*.atria.stdlog"
-    #         pmap(sub_procs,
-    #             file_range,
-    #             args["read1"],
-    #             args["read2"],
-    #             repeat(Int64[nfile], nfile),
-    #             repeat(Cmd[julia_command], nfile)
-    #         )
-    #         file_range = 1:0  # no file will be processed in the main thread.
-    #         return 0  # do not run Atria in the main thread. end of julia_wrapper_atria()
-    #     end
-    # end
-
 
     #================== Arguments ====================#
 
@@ -109,8 +47,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     min_ratio_mismatch = args["min-ratio-mismatch"]
     prob_diff          = args["prob-diff"         ]
     # hard clip
-    nclip_after        = args["clip-after"]
-    nclip_front        = args["clip5"     ]
+    nclip_after_r1        = args["clip-after-r1"]
+    nclip_after_r2        = args["clip-after-r2"]
+    nclip_front_r1        = args["clip5-r1"     ]
+    nclip_front_r2        = args["clip5-r2"     ]
     # quality
     quality_offset     = Trimmer.get_quality_offset(args["quality-format"])
     quality_kmer       = args["quality-kmer"]
@@ -130,8 +70,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     do_length_filtration     = !args["no-length-filtration"]
     do_adapter_trimming      = !args["no-adapter-trim"     ]
     do_consensus_calling     =  do_adapter_trimming && !args["no-consensus"]
-    do_hard_clip_3_end       =  nclip_after > 0
-    do_hard_clip_5_end       =  nclip_front > 0
+    do_hard_clip_3_end_r1       =  nclip_after_r1 > 0
+    do_hard_clip_3_end_r2       =  nclip_after_r2 > 0
+    do_hard_clip_5_end_r1       =  nclip_front_r1 > 0
+    do_hard_clip_5_end_r2       =  nclip_front_r2 > 0
     do_quality_trimming      = !args["no-quality-trim"     ]
     do_tail_n_trimming       = !args["no-tail-n-trim"      ]
     do_tail_low_qual_trimming=  do_polyG || do_polyT || do_polyA || do_polyC || do_adapter_trimming
@@ -217,14 +159,18 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
 
     #======= Hard clips =======#
-    HardClip3End = do_hard_clip_3_end ? quote
-        tail_trim!(r1::FqRecord, $nclip_after)
-        tail_trim!(r2::FqRecord, $nclip_after)
+    HardClip3EndR1 = do_hard_clip_3_end_r1 ? quote
+        tail_trim!(r1::FqRecord, $nclip_after_r1)
+    end : nothing
+    HardClip3EndR2 = do_hard_clip_3_end_r2 ? quote
+        tail_trim!(r2::FqRecord, $nclip_after_r2)
     end : nothing
 
-    HardClip5End = do_hard_clip_5_end ? quote
-        front_trim!(r1::FqRecord, $nclip_front::Int64)
-        front_trim!(r2::FqRecord, $nclip_front::Int64)
+    HardClip5EndR1 = do_hard_clip_5_end_r1 ? quote
+        front_trim!(r1::FqRecord, $nclip_front_r1::Int64)
+    end : nothing
+    HardClip5EndR2 = do_hard_clip_5_end_r2 ? quote
+        front_trim!(r2::FqRecord, $nclip_front_r2::Int64)
     end : nothing
 
 
@@ -461,7 +407,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             resize!(isgoods, n_reads)
         end
         # split reads to N reads per batch
-        Threads.@threads for reads_start in 1:256:n_reads
+        Threads.@threads  for reads_start in 1:256:n_reads
             reads_end = min(reads_start + 255, n_reads)
             reads_range = reads_start:reads_end
             thread_id = Threads.threadid()
@@ -476,8 +422,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                 $PolyC
                 $LengthFilter
                 $AdapterTrim
-                $HardClip3End
-                $HardClip5End
+                $HardClip3EndR1
+                $HardClip3EndR2
+                $HardClip5EndR1
+                $HardClip5EndR2
                 $QualityTrim
                 $TailNTrim
                 $MaxNFilter
@@ -595,8 +543,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         @info("ATRIA TRIMMERS AND FILTERS",
             adapter_trimming = do_adapter_trimming,
             consensus_calling = do_consensus_calling,
-            hard_clip_3_end = do_hard_clip_3_end,
-            hard_clip_5_end = do_hard_clip_5_end,
+            hard_clip_3_end_r1 = do_hard_clip_3_end_r1,
+            hard_clip_3_end_r2 = do_hard_clip_3_end_r2,
+            hard_clip_5_end_r1 = do_hard_clip_5_end_r1,
+            hard_clip_5_end_r2 = do_hard_clip_5_end_r2,
             quality_trimming = do_quality_trimming,
             tail_N_trimming = do_tail_n_trimming,
             max_N_filtering = do_max_n_filtration,
@@ -609,8 +559,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             @info("ATRIA TRIMMERS AND FILTERS",
                 adapter_trimming = do_adapter_trimming,
                 consensus_calling = do_consensus_calling,
-                hard_clip_3_end = do_hard_clip_3_end,
-                hard_clip_5_end = do_hard_clip_5_end,
+                hard_clip_3_end_r1 = do_hard_clip_3_end_r1,
+                hard_clip_3_end_r2 = do_hard_clip_3_end_r2,
+                hard_clip_5_end_r1 = do_hard_clip_5_end_r1,
+                hard_clip_5_end_r2 = do_hard_clip_5_end_r2,
                 quality_trimming = do_quality_trimming,
                 tail_N_trimming = do_tail_n_trimming,
                 max_N_filtering = do_max_n_filtration,

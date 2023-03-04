@@ -14,66 +14,8 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
 
     outdir = args["output-dir"]
 
-    #================== Parallel control ====================
-    --procs 4onlyrun2 is a hidden feature for parallel computing...
-    onlyrun2 means only run the second read fastqs.
-    MECHANISM:
-    when -p | --procs is specified, Atria will launch additional worker processes.
-    the controller process (main process) will only manage worker processes,
-    and will not run samples.
-    the new workers will run additional Atria with a modified ARGS: -p XonlyrunN
-    onlyrunN refresh `file_range` to N:N,
-    so one worker will only run one sample each time. =#
-
     nfile = length(args["read1"])
     file_range = 1:nfile
-
-    # index_procs = findfirst(f_procs, ARGS)
-    # if index_procs != nothing  # argument --procs is specified
-    #     nparallel = tryparse(Int64, args["procs"])
-    #     if nparallel == nothing  # --procs might be 4onlyrun2
-    #         if occursin(r"\d+onlyrun\d+", args["procs"])
-    #             _filenum = parse(Int64, match(r"\d+onlyrun(\d+)$", args["procs"]).captures[1])
-    #             file_range = _filenum:_filenum
-    #         else
-    #             @error "--procs INT must be positive integer" _module=:. _group=:. _id=:. _file="."
-    #             exit(3)
-    #         end
-    #     else
-    #         # start run this code as parallel.
-    #         addprocs(nparallel)
-    #         julia_command = Base.julia_cmd()
-
-    #         function sub_procs_single_end(filenum::Int64, r1_filename::String, nfile::Int64, julia_command::Cmd)
-    #             println("Atria: ($filenum/$nfile) $r1_filename")
-    #             new_args = ARGS[1:end]
-    #             # presumption: --procs is specified in ARGS
-    #             new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
-
-    #             logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
-    #             try
-    #                 run(pipeline(`$julia_command -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
-    #             catch e
-    #                 rethrow(e)
-    #             end
-
-    #             return 0
-    #         end
-    #         @eval @everywhere ARGS = $ARGS
-    #         @eval @everywhere sub_procs_single_end = $sub_procs_single_end
-    #         @eval @everywhere outdir = $outdir
-    #         @info "Parallel mode: logs saved to $outdir/*.atria.(std)log(.json)"
-    #         pmap(sub_procs_single_end,
-    #             file_range,
-    #             args["read1"],
-    #             repeat(Int64[nfile], nfile),
-    #             repeat(Cmd[julia_command], nfile)
-    #         )
-    #         file_range = 1:0  # no file will be processed in the main thread.
-    #         return 0  # do not run Atria in the main thread. end of julia_wrapper_atria()
-    #     end
-    # end
-
 
     #================== Arguments ====================#
 
@@ -96,8 +38,8 @@ function julia_wrapper_atria_single_end(ARGS::Vector{String}; exit_after_help = 
     tail_length              = args["tail-length"             ]
     # consensus
     # hard clip
-    nclip_after        = args["clip-after"]
-    nclip_front        = args["clip5"     ]
+    nclip_after        = args["clip-after-r1"]
+    nclip_front        = args["clip5-r1"     ]
     # quality
     quality_offset     = Trimmer.get_quality_offset(args["quality-format"])
     quality_kmer       = args["quality-kmer"]

@@ -1,7 +1,7 @@
 
 # f_procs(x::String) = x == "-p" || x == "--procs"
 
-function julia_wrapper_detect_adapter(ARGS::Vector{String}; exit_after_help = true)
+function julia_wrapper_detect_adapter_se(ARGS::Vector{String}; exit_after_help = true)
 
     args = parsing_args(ARGS; exit_after_help = exit_after_help)
 
@@ -93,6 +93,26 @@ function julia_wrapper_detect_adapter(ARGS::Vector{String}; exit_after_help = tr
 
         close(io1)
     end
+
+    println("""
+    _________________________________
+
+    Single-end Adapter Detection Note: 
+    
+    Atria detects adapter sequences using a known adapter file. Adapter sequences are truncated to 16-bp, which are accurate enough for trimming. From experiments of many popular trimmers, increasing adapter length from 16 to 33 does not increase accuracy (Figure 4C of https://doi.org/10.46471/gigabyte.31).
+
+    Adapter detection is the last choice because its accuracy is highly based on your data. If your data have been trimmed, the remaining adapters may not enough for accurate guessing. Also, Atria cannot find adapters not listed in the known adapter file. We suggest to use adapter detection only when you cannot find the actual adapter sequence.
+
+    Besides, Atria does not automatically trim auto-detected adapters. It is your responsibility to check whether the detected adapters are real.
+    
+    Those rules can be used to check the adapter results: 
+    
+    (1) An Illumina sequence file only has ONE adapter sequence. 
+    
+    (2) In the same batch of NGS experiments, all single-end samples should have the SAME adapter sequence. The most prevalent adapters might be true for all your single-end data.
+    _________________________________
+
+    """)
 
     return 0
 end # func

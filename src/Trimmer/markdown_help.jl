@@ -51,13 +51,16 @@ Atria integrated several trimming and read filtration methods. It does the follo
    - disable: `--no-consensus`
 
 4. **Hard Clip 3' end**: resize reads to a fixed length by discarding extra bases in 3' end.
-   - specify the number of bases to keep: `-C INT` or `--clip-after INT` (default: disabled)
+   - specify the number of bases to keep in read 1: `-b INT` or `--clip-after-r1 INT` (default: disabled)
+
+   - specify the number of bases to keep in read 2: `-B INT` or `--clip-after-r2 INT` (default: disabled)
 
 5. **Hard Clip 5' end**: remove the first INT bases from 5' end.
-   - specify the number of bases to remove: `-c INT` or `--clip5 INT` (default: disabled)
+   - specify the number of bases in read 1 to remove: `-e INT` or `--clip5-r1 INT` (default: disabled)
+   
+   - specify the number of bases in read 2 to remove: `-E INT` or `--clip5-r2 INT` (default: disabled)
 
 6. **Quality Trimming**: trim low-quality tails. (Trimming read tails when the average quality of bases in a sliding window is low.)
-
    - specify average quality threshold: `-q 20` or `--quality-score 20` (default: 20)
 
    - specify sliding window length: `--quality-kmer 5` (default: 5)
@@ -80,12 +83,11 @@ Atria integrated several trimming and read filtration methods. It does the follo
    - disable: `--no-length-filtration`
 
 10. **Read Complexity Filtration**: filter reads with low complexity.
+    Complexity is the percentage of base that is different from its next base.
 
-   Complexity is the percentage of base that is different from its next base.
+    - enable: `--enable-complexity-filtration` (default: disabled)
 
-   - enable: `--enable-complexity-filtration` (default: disabled)
-
-   - specify complexity threshold: `--min-complexity 0.3` (default: 0.3)
+    - specify complexity threshold: `--min-complexity 0.3` (default: 0.3)
 
 ### Parallel (multi-threading) computing
 
