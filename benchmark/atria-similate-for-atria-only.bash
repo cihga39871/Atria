@@ -11,7 +11,7 @@ r1="reads_diff_indel.R1.fastq.gz"
 r2="reads_diff_indel.R2.fastq.gz"
 
 atria_old=/home/jc/projects/atria/app-3.2.1/bin/atria
-atria_new=/home/jc/projects/atria/app-3.2.2-dev/bin/atria
+atria_new=atria
 
 . $atria/benchmark/trimming-functions.bash
 

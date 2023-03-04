@@ -694,7 +694,6 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
 
-            print("---- write ")
             task_write1, task_write2 = write_fqs_threads!(
                 io1out::IO, io2out::IO,
                 outr1s::Vector{Vector{UInt8}}, outr2s::Vector{Vector{UInt8}},
