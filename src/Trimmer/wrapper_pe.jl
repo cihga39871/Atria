@@ -1,7 +1,7 @@
 
 # f_procs(x::String) = x == "-p" || x == "--procs"
 
-function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
+function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     time_program_initializing = time()
 

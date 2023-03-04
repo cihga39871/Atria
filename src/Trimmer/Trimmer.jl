@@ -1,9 +1,9 @@
 
 module Trimmer
 
-export julia_wrapper_atria,
+export julia_wrapper_atria_pe,
 julia_wrapper_atria_se,
-julia_wrapper_detect_adapter,
+julia_wrapper_detect_adapter_se,
 julia_wrapper_detect_adapter_pe,
 sub_procs, sub_procs_single_end,
 atria_markdown_help,
@@ -29,6 +29,7 @@ using PrettyTables
 using DataFrames
 using CSV
 using Dates
+using Statistics
 
 using ..BioBits
 using ..BioBits.BioSymbols
@@ -41,10 +42,9 @@ const atria_version = @eval($(string("v", Pkg.project().version)))
 include("markdown_help.jl")
 include("args.jl")
 include("thread_trim.jl")
-include("wrapper.jl")
-include("wrapper_single_end.jl")
+include("wrapper_pe.jl")
+include("wrapper_se.jl")
 include("detect_adapter.jl")
-include("wrapper_detect_adapter.jl")
-include("wrapper_detect_adapter_pair_end.jl")
-
+include("wrapper_detect_adapter_se.jl")
+include("wrapper_detect_adapter_pe.jl")
 end

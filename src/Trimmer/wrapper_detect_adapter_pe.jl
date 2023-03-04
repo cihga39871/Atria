@@ -13,6 +13,7 @@ function julia_wrapper_detect_adapter_pe(ARGS::Vector{String}; exit_after_help =
     args_range_test(args)
     
     nthread = args["threads"]
+    outdir = args["output-dir"]
 
     nfile = length(args["read1"])
     file_range = 1:nfile

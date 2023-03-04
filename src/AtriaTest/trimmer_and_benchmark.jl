@@ -32,33 +32,34 @@
         Benchmark.julia_wrapper_randtrim(["-h"])
 
         if Sys.iswindows()
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
+            julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.randtrim.fastq", "-R", "peReadSimulated.R2.randtrim.fastq", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
         else
             run(`pigz --keep peReadSimulated.R1.randtrim.fastq`)
             run(`pigz --keep peReadSimulated.R2.randtrim.fastq`)
-            Trimmer.julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "--check-identifier", "-f"])
-            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
-            julia_wrapper_detect_adapter(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"])
+            Trimmer.julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "--check-identifier", "-f"])
+            julia_wrapper_atria_se(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
+            julia_wrapper_detect_adapter_se(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"])
+            julia_wrapper_detect_adapter_pe(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"])
 
             run(`pbzip2 peReadSimulated.R1.randtrim.fastq`)
             run(`pbzip2 peReadSimulated.R2.randtrim.fastq`)
-            julia_wrapper_atria(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "bz2", "--check-identifier", "-f"])
-            julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "bz2", "-f"])
+            julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "bz2", "--check-identifier", "-f"])
+            julia_wrapper_atria_se(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "bz2", "-f"])
         end
 
 
-        julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f"])
-        julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-f"])
+        julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f"])
+        julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-f"])
 
         # skip finished
-        julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration"])
-        julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration"])
+        julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration"])
+        julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration"])
 
         # detect adapter
-        julia_wrapper_detect_adapter(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration"])
+        julia_wrapper_detect_adapter_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration"])
 
-        julia_wrapper_atria(["-h"], exit_after_help=false)
-        julia_wrapper_atria_single_end(["-h"], exit_after_help=false)
+        julia_wrapper_atria_pe(["-h"], exit_after_help=false)
+        julia_wrapper_atria_se(["-h"], exit_after_help=false)
 
         julia_wrapper_readstat(["peReadSimulated.R1.atria.fastq", "peReadSimulated.R2.atria.fastq"])
         julia_wrapper_readstat(["-h"])

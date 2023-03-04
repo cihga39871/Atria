@@ -56,11 +56,11 @@ function julia_main()::Cint
                 if "-R" in ARGS || "--read2" in ARGS
                     julia_wrapper_detect_adapter_pe(ARGS[2:end])
                 else
-                    julia_wrapper_detect_adapter(ARGS[2:end])
+                    julia_wrapper_detect_adapter_se(ARGS[2:end])
                 end
             elseif "-R" in ARGS || "--read2" in ARGS
                 # paired-end
-                julia_wrapper_atria(ARGS[2:end]::Vector{String})
+                julia_wrapper_atria_pe(ARGS[2:end]::Vector{String})
             else
                 julia_wrapper_atria_se(ARGS[2:end]::Vector{String})
             end
@@ -79,11 +79,11 @@ function julia_main()::Cint
                 if "-R" in ARGS || "--read2" in ARGS
                     julia_wrapper_detect_adapter_pe(ARGS)
                 else
-                    julia_wrapper_detect_adapter(ARGS)
+                    julia_wrapper_detect_adapter_se(ARGS)
                 end
             elseif "-R" in ARGS || "--read2" in ARGS
                 # paired-end
-                julia_wrapper_atria(ARGS::Vector{String})
+                julia_wrapper_atria_pe(ARGS::Vector{String})
             else
                 julia_wrapper_atria_se(ARGS::Vector{String})
             end
