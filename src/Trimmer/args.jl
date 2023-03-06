@@ -78,13 +78,15 @@ function parsing_args(args::Vector; exit_after_help = true)
             help = "disable adapter and pair-end trimming"
             action = :store_true
         "--adapter1", "-a"
-            help = "read 1 adapter"
+            help = "read 1 adapter(s)"
+            nargs = '+'
             metavar = "SEQ"
-            default = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
+            default = String["AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"]
         "--adapter2", "-A"
-            help = "read 2 adapter"
+            help = "read 2 adapter(s)"
+            nargs = '+'
             metavar = "SEQ"
-            default = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
+            default = String["AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"]
         "--kmer-tolerance", "-T"
             help = "# of mismatch allowed in 16-mers adapter and pair-end matching"
             default = 2
@@ -262,7 +264,12 @@ function parsing_args(args::Vector; exit_after_help = true)
 end
 
 function isdna(x::String)
-    all(map(d -> uppercase(d) in ['A', 'G', 'C', 'T', 'N'], collect(x)))
+    try
+        foreach(x -> convert(DNA, x), collect(x))
+        true
+    catch
+        false
+    end
 end
 
 function args_range_test(args::Dict{String,Any}; test_only::Bool=false)

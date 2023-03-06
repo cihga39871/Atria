@@ -29,23 +29,12 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     # N
     max_N                    = args["max-n"                  ]
     # adapter
-    adapter1                 = LongDNA{4}(args["adapter1"]) |> bitsafe!
-    adapter2                 = LongDNA{4}(args["adapter2"]) |> bitsafe!
-    adapter1_seqheadset      = SeqHeadSet(adapter1)
-    adapter2_seqheadset      = SeqHeadSet(adapter2)
-    # NOTE: TruncSeq has some unknown accuracy problems.
-    kmer_tolerance           = args["kmer-tolerance"          ]
-    kmer_tolerance_consensus = args["kmer-tolerance-consensus"]
-    pe_adapter_diff          = args["pe-adapter-diff"         ]
-    r1_r2_diff               = args["r1-r2-diff"              ]
-    kmer_n_match             = args["kmer-n-match"            ]
-    trim_score               = args["trim-score-pe"           ]
-    trim_score_se            = args["trim-score-se"           ]
-    tail_length              = args["tail-length"             ]
-    # consensus
-    overlap_score      = args["overlap-score"     ]
-    min_ratio_mismatch = args["min-ratio-mismatch"]
-    prob_diff          = args["prob-diff"         ]
+    adapter1s                 = args["adapter1"]
+    adapter2s                 = args["adapter2"]
+    adapter1_seqheadsets      = SeqHeadSet.(adapter1s)
+    adapter2_seqheadsets      = SeqHeadSet.(adapter2s)
+    op                        = PEOptions(args)  # adapter and primer match options
+
     # hard clip
     nclip_after_r1        = args["clip-after-r1"]
     nclip_after_r2        = args["clip-after-r2"]
@@ -69,16 +58,16 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     do_polyC                 =  args["polyC"               ]
     do_length_filtration     = !args["no-length-filtration"]
     do_adapter_trimming      = !args["no-adapter-trim"     ]
-    do_consensus_calling     =  do_adapter_trimming && !args["no-consensus"]
-    do_hard_clip_3_end_r1       =  nclip_after_r1 > 0
-    do_hard_clip_3_end_r2       =  nclip_after_r2 > 0
-    do_hard_clip_5_end_r1       =  nclip_front_r1 > 0
-    do_hard_clip_5_end_r2       =  nclip_front_r2 > 0
+    do_consensus_calling     = !args["no-consensus"]
+    do_hard_clip_3_end_r1    =  nclip_after_r1 > 0
+    do_hard_clip_3_end_r2    =  nclip_after_r2 > 0
+    do_hard_clip_5_end_r1    =  nclip_front_r1 > 0
+    do_hard_clip_5_end_r2    =  nclip_front_r2 > 0
     do_quality_trimming      = !args["no-quality-trim"     ]
     do_tail_n_trimming       = !args["no-tail-n-trim"      ]
     do_tail_low_qual_trimming=  do_polyG || do_polyT || do_polyA || do_polyC || do_adapter_trimming
     do_max_n_filtration      =  max_N > 0
-    do_read_stats            =  args["stats"                       ]
+    # do_read_stats            =  args["stats"                       ]
     do_complexity_filtration =  args["enable-complexity-filtration"]
 
     mkpath(outdir)
@@ -231,8 +220,8 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         extra_tolerance = max(r1_adapter_nmatch, r2_adapter_nmatch) < $kmer_n_match
 
         # rx_seq_rc is replaced with reverse complement of rx.seq
-        r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc!(r1_seq_rc, r2_seqheadset, r1.seq, 1, $kmer_tolerance + extra_tolerance)
-        r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc!(r2_seq_rc, r1_seqheadset, r2.seq, 1, $kmer_tolerance + extra_tolerance)
+        r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc!(r1_seq_rc, r2_seqheadset, r1.seq, 1, $kmer_tolerance + extra_tolerance, init_rc_dest = true)
+        r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc!(r2_seq_rc, r1_seqheadset, r2.seq, 1, $kmer_tolerance + extra_tolerance, init_rc_dest = true)
 
         # if one hit, then check other matches with loosen kmer tomerance
         max_nmatch = max(r1_adapter_nmatch, r2_adapter_nmatch, r1_pe_nmatch, r2_pe_nmatch)

@@ -29,8 +29,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     # N
     max_N                    =  args["max-n"                 ]
     # adapter
-    adapter1                 = LongDNA{4}(args["adapter1"]) |> bitsafe!
-    adapter1_seqheadset      = SeqHeadSet(adapter1)
+    adapter1s                 = args["adapter1"]
+    adapter1_seqheadsets      = SeqHeadSet.(adapter1s)
     # NOTE: TruncSeq has some unknown accuracy problems.
     kmer_tolerance           = args["kmer-tolerance"          ]
     kmer_tolerance_consensus = args["kmer-tolerance-consensus"]
@@ -164,25 +164,9 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
     #======= adapter trimming =======#
     AdapterTrim = do_adapter_trimming ? quote
-
-        r1_adapter_pos, r1_adapter_nmatch = bitwise_scan($adapter1_seqheadset, r1.seq, 1, $kmer_tolerance)
-
-        r1_insert_size = r1_adapter_pos - 1
-
-        r1_adapter_prob = probmean(r1, r1_adapter_pos, r1_adapter_pos + 15)
-
-        match_length = length(r1.seq) - r1_insert_size
-        if match_length >= 16
-            r1_adapter_score = @fastmath r1_adapter_nmatch * r1_adapter_prob
-        else
-            r1_adapter_score = @fastmath(
-                16 * r1_adapter_nmatch * r1_adapter_prob / match_length
-            )
-        end
-
-        if r1_adapter_score > $trim_score
-            # r1_insert_size can be -1
-            tail_trim!(r1::FqRecord, r1_insert_size < 0 ? 0 : r1_insert_size)
+        nremain = adapter_detect_se(adapter1_seqheadsets, r1, $kmer_tolerance, $trim_score)
+        if nremain < length(r1.seq)
+            tail_trim!(r1::FqRecord, nremain)
         end
     end : nothing
 
