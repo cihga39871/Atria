@@ -272,6 +272,17 @@ function isdna(x::String)
     end
 end
 
+function isdna(xs::Vector)
+    for x in xs
+        if isdna(x)
+            continue
+        else
+            return false
+        end
+    end
+    true
+end
+
 function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     ispass = true
 

@@ -10,7 +10,7 @@ r2="reads_diff_indel.R2.fastq"
 r1="reads_diff_indel.R1.fastq.gz"
 r2="reads_diff_indel.R2.fastq.gz"
 
-atria_old=/home/jc/projects/atria/app-3.2.1/bin/atria
+atria_old=/export/home/CFIA-ACIA/chuanj/software/Atria/app-3.2.1/bin/atria
 atria_new=atria
 
 . $atria/benchmark/trimming-functions.bash
@@ -19,17 +19,25 @@ atria simulate --prefix reads_diff_indel --adapter1 $a1 --adapter2 $a2 --repeat 
 
 NUM_BASES=`echo "4200000 * 200" | bc`
 
+run_atria_src(){
+    local num_threads=1
+    if [[ $1 ]]; then
+        num_threads=$1
+    fi
+	export JULIA_NUM_THREADS=$num_threads
+	$atria/src/atria --no-consensus -t $num_threads -r $r1 $r1 -R $r2 $r2 -o Atria-src --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --force
+}
 
 run_atria(){
     local num_threads=1
     if [[ $1 ]]; then
         num_threads=$1
     fi
-    /usr/bin/time -v $atria_old --no-consensus \
+    $time -v $atria_old --no-consensus -t $num_threads \
         -r $r1 $r1 -R $r2 $r2 \
         -o Atria-old \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
-        --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
+        --adapter1 $a1 --adapter2 $a2 --force
 }
 
 run_atria_consensus(){
@@ -37,11 +45,11 @@ run_atria_consensus(){
     if [[ $1 ]]; then
         num_threads=$1
     fi
-    /usr/bin/time -v $atria_old \
+    $time -v $atria_old -t $num_threads \
         -r $r1 $r1 -R $r2 $r2 \
         -o Atria-consensus-old \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
-        --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
+        --adapter1 $a1 --adapter2 $a2 --force
 }
 
 run_atria_new(){
@@ -49,11 +57,11 @@ run_atria_new(){
     if [[ $1 ]]; then
         num_threads=$1
     fi
-    /usr/bin/time -v $atria_new --no-consensus \
+    $time -v $atria_new --no-consensus -t $num_threads \
         -r $r1 $r1 -R $r2 $r2 \
         -o Atria-new \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
-        --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
+        --adapter1 $a1 --adapter2 $a2 --force
 }
 
 run_atria_consensus_new(){
@@ -61,11 +69,11 @@ run_atria_consensus_new(){
     if [[ $1 ]]; then
         num_threads=$1
     fi
-    /usr/bin/time -v $atria_new \
+    $time -v $atria_new \
         -r $r1 $r1 -R $r2 $r2 \
         -o Atria-consensus-new \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
-        --adapter1 $a1 --adapter2 $a2 --threads $num_threads --force
+        --adapter1 $a1 --adapter2 $a2 -t $num_threads --force
 }
 
 echo "" 2> stderr.log

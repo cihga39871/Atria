@@ -29,8 +29,8 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     # N
     max_N                    = args["max-n"                  ]
     # adapter
-    adapter1s                 = args["adapter1"]
-    adapter2s                 = args["adapter2"]
+    adapter1s                 = LongDNA{4}.(args["adapter1"])
+    adapter2s                 = LongDNA{4}.(args["adapter2"])
     adapter1_seqheadsets      = SeqHeadSet.(adapter1s)
     adapter2_seqheadsets      = SeqHeadSet.(adapter2s)
     op                        = PEOptions(args)  # adapter and primer match options
@@ -208,6 +208,16 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     #======= adapter trimming =======#
     AdapterTrim = do_adapter_trimming ? quote
+        r1_seq_rc = $r1_seq_rc_threads[thread_id]
+        r2_seq_rc = $r2_seq_rc_threads[thread_id]
+        adapter_match_and_trim_pe!(
+            $adapter1_seqheadsets, $adapter2_seqheadsets,
+            $adapter1s, $adapter2s, r1, r2,
+            true, r1_seq_rc, r2_seq_rc, $op
+        )
+    end : nothing
+
+    #=AdapterTrim = do_adapter_trimming ? quote
         # rx_seq_rc is not initialized by this rx
         r1_seq_rc = $r1_seq_rc_threads[thread_id]
         r2_seq_rc = $r2_seq_rc_threads[thread_id]
@@ -331,8 +341,6 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                         is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                     end
                 end
-                # r1_insert_size_decision >= 0 && tail_trim!(r1::FqRecord, r1_insert_size_decision)
-                # r2_insert_size_decision >= 0 && tail_trim!(r2::FqRecord, r2_insert_size_decision)
 
                 # v3.0.0-dev: If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
                 r1_nremain = if r1_insert_size_decision >= 1
@@ -371,7 +379,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
             append!(r2.des, adapter_trimming_stat)
         end
     end : nothing
-
+    =#
 
 
     # @eval function read_processing!(r1::FqRecord, r2::FqRecord, thread_id::Int)::Bool

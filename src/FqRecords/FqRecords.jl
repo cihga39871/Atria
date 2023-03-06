@@ -59,6 +59,8 @@ include("adapter_match_se.jl")
 export adapter_match_se
 
 include("adapter_match_pe.jl")
-export adapter_match_pe, PEOptions
+export adapter_match_and_trim_pe!,
+adapter_match_pe, 
+PEOptions, AdapterPERes 
 
 end
