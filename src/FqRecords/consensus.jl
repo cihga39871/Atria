@@ -116,21 +116,23 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNA{4}, r2_seq
     r1_length = length(r1_seq)
     r2_length = length(r2_seq)
 
-    r1_overlap_from, r1_overlap_nmatch = bitwise_scan(r2_seq_rc, r1_seq, 1, kmer_tolerance)
-    r2_overlap_from, r2_overlap_nmatch = bitwise_scan(r1_seq_rc, r2_seq, 1, kmer_tolerance)
+    # r1_overlap_from, r1_overlap_nmatch, ...
+    r1_ms = bitwise_scan(r2_seq_rc, r1_seq, 1, kmer_tolerance)
+    # r2_overlap_from, r2_overlap_nmatch, ...
+    r2_ms = bitwise_scan(r1_seq_rc, r2_seq, 1, kmer_tolerance)
 
     # r1_overlap_from == 0 && return false, -1.0
     # r2_overlap_from == 0 && return false, -1.0
 
-    r1_overlap_nbase = r1_length - r1_overlap_from + 1
-    r2_overlap_nbase = r2_length - r2_overlap_from + 1
+    r1_overlap_nbase = r1_length - r1_ms.idx + 1
+    r2_overlap_nbase = r2_length - r2_ms.idx + 1
     r1_overlap_nbase != r2_overlap_nbase && return false, -1.0
 
     if overlap_score > 0
-        r1_overlap_prob = probmean(r1, r1_overlap_from, r1_overlap_from + 15)
-        r2_overlap_prob = probmean(r2, r2_overlap_from, r2_overlap_from + 15)
+        r1_overlap_prob = probmean(r1, r1_ms.idx, r1_ms.idx + 15)
+        r2_overlap_prob = probmean(r2, r2_ms.idx, r2_ms.idx + 15)
 
-        max_overlap_score = max(r1_overlap_nmatch * r1_overlap_prob, r2_overlap_nmatch * r2_overlap_prob)
+        max_overlap_score = max(r1_ms.ncompatible * r1_overlap_prob, r2_ms.ncompatible * r2_overlap_prob)
         max_overlap_score < overlap_score && return false, -1.0
     end
 

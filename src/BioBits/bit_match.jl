@@ -8,8 +8,11 @@ end
 function MatchRes(idx::Int64, ncompatible::Int64)
     MatchRes(idx, ncompatible, NaN, NaN)
 end
-function MatchRes(idx::Int64, score)
-    
+function Base.:(==)(a::MatchRes, b::MatchRes)
+    (a.idx == b.idx) &&
+    (a.ncompatible == b.ncompatible) &&
+    (a.prob == b.prob || (isnan(a.prob) && isnan(b.prob))) &&
+    (a.score == b.score || (isnan(a.score) && isnan(b.score)))
 end
 
 function Base.isless(a::MatchRes, b::MatchRes)
