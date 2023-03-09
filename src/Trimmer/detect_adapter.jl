@@ -53,7 +53,7 @@ function count_adapter(rs::Vector{FqRecord}, adapter::SeqHeadSet; kmer_tolerance
     base_match = 0
     nmatch_threshold = 16 - kmer_tolerance
     for r in rs
-        pos, nmatch = bitwise_scan(adapter, r.seq, 1, kmer_tolerance)
+        pos, nmatch, prob, score = bitwise_scan(adapter, r.seq, 1, kmer_tolerance)
         if nmatch >= nmatch_threshold
             n_adapter += 1
             base_match += nmatch
@@ -95,8 +95,8 @@ function check_pe_match(r1::FqRecord, r2::FqRecord; kmer_tolerance = 3, kmer_n_m
     r2_seqheadset = SeqHeadSet(r2.seq)
     r1_seqheadset = SeqHeadSet(r1.seq)
 
-    r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc(r2_seqheadset, r1.seq, 1, kmer_tolerance)
-    r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc(r1_seqheadset, r2.seq, 1, kmer_tolerance)
+    r1_insert_size_pe, r1_pe_nmatch, prob1, score1 = bitwise_scan_rc(r2_seqheadset, r1.seq, 1, kmer_tolerance)
+    r2_insert_size_pe, r2_pe_nmatch, prob2, score2 = bitwise_scan_rc(r1_seqheadset, r2.seq, 1, kmer_tolerance)
 
     # if r1_insert_size_pe != r2_insert_size_pe
     #     return empty_seq, 0.0, empty_seq, 0.0, 0
