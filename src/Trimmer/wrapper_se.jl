@@ -164,7 +164,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
     #======= adapter trimming =======#
     AdapterTrim = do_adapter_trimming ? quote
-        nremain = adapter_match_se(adapter1_seqheadsets, r1, $kmer_tolerance, $trim_score)
+        nremain = adapter_match_se($adapter1_seqheadsets, r1, $kmer_tolerance, $trim_score)
         if nremain < length(r1.seq)
             tail_trim!(r1::FqRecord, nremain)
         end
