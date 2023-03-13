@@ -53,10 +53,10 @@ function count_adapter(rs::Vector{FqRecord}, adapter::SeqHeadSet; kmer_tolerance
     base_match = 0
     nmatch_threshold = 16 - kmer_tolerance
     for r in rs
-        pos, nmatch, prob, score = bitwise_scan(adapter, r.seq, 1, kmer_tolerance)
-        if nmatch >= nmatch_threshold
+        ms = bitwise_scan(adapter, r.seq, 1, kmer_tolerance)
+        if ms.ncompatible >= nmatch_threshold
             n_adapter += 1
-            base_match += nmatch
+            base_match += ms.ncompatible
         end
     end
     String(LongDNA{4}(adapter)), n_adapter, base_match / n_adapter / 16
@@ -95,9 +95,13 @@ function check_pe_match(r1::FqRecord, r2::FqRecord; kmer_tolerance = 3, kmer_n_m
     r2_seqheadset = SeqHeadSet(r2.seq)
     r1_seqheadset = SeqHeadSet(r1.seq)
 
-    r1_insert_size_pe, r1_pe_nmatch, prob1, score1 = bitwise_scan_rc(r2_seqheadset, r1.seq, 1, kmer_tolerance)
-    r2_insert_size_pe, r2_pe_nmatch, prob2, score2 = bitwise_scan_rc(r1_seqheadset, r2.seq, 1, kmer_tolerance)
+    ms1 = bitwise_scan_rc(r2_seqheadset, r1.seq, 1, kmer_tolerance)
+    ms2 = bitwise_scan_rc(r1_seqheadset, r2.seq, 1, kmer_tolerance)
 
+    r1_insert_size_pe = ms1.idx
+    r1_pe_nmatch = ms1.ncompatible
+    r2_insert_size_pe = ms2.idx
+    r2_pe_nmatch = ms2.ncompatible
     # if r1_insert_size_pe != r2_insert_size_pe
     #     return empty_seq, 0.0, empty_seq, 0.0, 0
     # end
@@ -167,6 +171,12 @@ function read_adapter_stats(r_df::DataFrame, nread::Int; occurance::Float64 = 0.
     stats.occurance = stats.count ./ nread
     select!(stats, :adapter, :count, :occurance, :identity, :adapter_start_position)
 
+    if nrow(stats) == 0
+        return stats
+    end
+
+    merge_short_to_long_adapters!(stats, nread)
+
     filter!(:occurance => x -> x > occurance, stats)
 
     if nrow(stats) == 0
@@ -174,12 +184,67 @@ function read_adapter_stats(r_df::DataFrame, nread::Int; occurance::Float64 = 0.
     end
 
     sort!(stats, [:count, :identity], rev=true)
-    count_cutoff = stats[1, :count] * 0.1
+    count_cutoff = stats[1, :count] * 0.3
 
     filter!(:count => x -> x > count_cutoff, stats)
 end
 
-function show_paired_adapter_result(file, r_stats, n_reads)
+"""
+    merge_short_to_long_adapters!(stats::DataFrame, nread::Int)
+```
+stats = 
+ Row │ adapter           count  occurance   identity  adapter_start_position 
+     │ LongSequ…         Int64  Float64     Float64   Float64                
+─────┼───────────────────────────────────────────────────────────────────────
+   1 │ AGATCGGAAGAGCGTC   3025  0.0144048   0.997003                 82.7977
+   2 │ AGATCGGAAGAGCG      877  0.00417619  0.997014                 86.3683
+   3 │ AGATCGGAAG          815  0.00388095  0.996967                 89.4417
+   4 │ AGATCGGAAGAG        810  0.00385714  0.997015                 87.884
+   5 │ AGATCG              748  0.0035619   0.996916                 91.1283
+   6 │ AGATCGGA            709  0.00337619  0.997042                 90.2976
+   7 │ AGAT                659  0.0031381   0.996979                 91.8285
+   8 │ AG                  659  0.0031381   0.996918                 91.6464
+   9 │ A                   480  0.00228571  0.997028                 90.0083
+  10 │ AGA                 451  0.00214762  0.997028                 89.1242
+  11 │ AGATC               398  0.00189524  0.997129                 88.3065
+  12 │ AGATCGG             349  0.0016619   0.997093                 86.9427
+```
+"""
+function merge_short_to_long_adapters!(stats::DataFrame, nread::Int)
+    # stats_backup = deepcopy(stats)
+    sort!(stats, :adapter, rev=true)
+    for i in nrow(stats):-1:1
+        seq = stats.adapter[i]
+        if length(seq) == 16  # full length, cannot have parent adapters
+            continue
+        end
+        seq_regex = BioRegex{DNA}("^" * String(stats.adapter[i]))
+        parent_indices = map(x -> occursin(seq_regex, x), stats.adapter)
+        parent_indices[i] = false
+        n_parent = sum(parent_indices)
+        if n_parent == 0  # skip
+            continue
+        end
+        occurance_each = stats.occurance[i] / n_parent
+        identity_each = stats.identity[i] * occurance_each
+        adapter_start_position_each = stats.adapter_start_position[i] * occurance_each
+        for (j, is_parent) in enumerate(parent_indices)
+            is_parent || continue
+            # weighted average for identity and adapter start position
+            stats.identity[j] = (stats.identity[j] * stats.occurance[j] + identity_each) / (stats.occurance[j] + occurance_each)
+            stats.adapter_start_position[j] = (stats.adapter_start_position[j] * stats.occurance[j] + adapter_start_position_each) / (stats.occurance[j] + occurance_each)
+            
+            stats.occurance[j] += occurance_each
+        end
+        deleteat!(stats, i)
+    end
+
+    # after all occurance calculation, compute count because of Int inaccuracy.
+    stats.count = round.(Int, stats.occurance .* nread)
+    stats
+end
+
+function show_paired_adapter_result(file::AbstractString, r_stats::DataFrame, n_reads::Int)
     print("$file: ")
     
     if nrow(r_stats) > 0
