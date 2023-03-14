@@ -17,9 +17,9 @@ Try `atria -h` or `atria --help` for more information.
 
 The input files should be paired-end FastQ(.gz|.bz2) files (in the same order), or single-end fastqs:
 
-1. Read 1 files: `-r X_R1.FQ Y_R1.FQ.GZ ...`
+1. Read 1 files: `-r XXXX_R1.fastq YYYY_R1.fastq.gz ...`
 
-2. Read 2 files (optional): `-R X_R2.FQ Y_R2.FQ.GZ ...`
+2. Read 2 files (optional): `-R XXXX_R2.fastq YYYY_R2.fastq.gz ...`
 
 Output all files to a directory: `-o PATH` or `--output-dir PATH`. Default is the current directory.
 
@@ -30,7 +30,6 @@ Atria skips completed analysis by default. Use `-f` or `--force` to disable the 
 Atria integrated several trimming and read filtration methods. It does the following sequentially.
 
 1. **Poly X Tail Trimming**: remove remove poly-X tails.
-
    suggest to enable `--polyG` for Illumina NextSeq/NovaSeq data.
 
    - enable: `--polyG`, `--polyT`, `--polyA`, and/or `--polyC` (default: disabled)
@@ -38,14 +37,13 @@ Atria integrated several trimming and read filtration methods. It does the follo
    - trim poly X tail if length > INT: `--poly-length 10`
 
 2. **Adapter Trimming**
+   - specify read 1 adapter(s): `-a SEQ...` or ` --adapter1 SEQ...` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
 
-   - specify read 1 adapter: `-a SEQ` or ` --adapter1 SEQ` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
-
-   - specify read 2 adapter: `-A SEQ` or ` --adapter2 SEQ` (default: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT) (if paired-end)
+   - specify read 2 adapter(s): `-A SEQ...` or ` --adapter2 SEQ...` (default: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT) (if paired-end)
 
    - disable: `--no-adapter-trim`
 
-   - if adapter is unknown, use `--detect-adapter`.
+   - if adapters are unknown, use `--detect-adapter` to guess adapters. (Atria does not trim guessed adapters automatically, please check results first.)
 
 3. **Paired-end Consensus Calling**: the overlapped regions of read pairs are checked and corrected. *It is available only when input files are paired-end and Adapter Trimming is on.*
    - disable: `--no-consensus`
@@ -82,9 +80,7 @@ Atria integrated several trimming and read filtration methods. It does the follo
 
    - disable: `--no-length-filtration`
 
-10. **Read Complexity Filtration**: filter reads with low complexity.
-    Complexity is the percentage of base that is different from its next base.
-
+10. **Read Complexity Filtration**: filter reads with low complexity. Complexity is the percentage of base that is different from its next base.
     - enable: `--enable-complexity-filtration` (default: disabled)
 
     - specify complexity threshold: `--min-complexity 0.3` (default: 0.3)

@@ -1,7 +1,7 @@
 
 
 
-function adapter_match_se(adapter1_seqheadset::SeqHeadSet,
+@inline function adapter_match_se(adapter1_seqheadset::SeqHeadSet,
                            r1::FqRecord,
                            kmer_tolerance::Int64,
                            trim_score::Float64)
@@ -19,7 +19,7 @@ function adapter_match_se(adapter1_seqheadset::SeqHeadSet,
     end
 end
 
-function adapter_match_se(adapter1_seqheadsets::Vector{SeqHeadSet},
+@inline function adapter_match_se(adapter1_seqheadsets::Vector{SeqHeadSet},
                            r1::FqRecord,
                            kmer_tolerance::Int64,
                            trim_score::Float64)

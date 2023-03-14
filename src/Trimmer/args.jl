@@ -364,12 +364,16 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     end
 
     # adapter triming
+    if length(args["read2"] > 0) && length(args["adapter1"]) != length(args["adapter2"])
+        @error "--adapter1 -a SEQ... and --adapter2 -A SEQ...: length of adapter 1 and adapter 2 should be the same. If the same sequence is used in adapter 1 and 2, you need to explicitly specify the sequence to both adapter 1 and 2." ADAPTER1=args["adapter1"] ADAPTER2=args["adapter2"] _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
     if !isdna(args["adapter1"])
-        @error "--adapter1 -a SEQ contains invalid bases (not ACGTN)" SEQ=args["adapter1"] _module=nothing _group=nothing _id=nothing _file=nothing
+        @error "--adapter1 -a SEQ... contain(s) invalid bases" SEQ=args["adapter1"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
     if !isdna(args["adapter2"])
-        @error "--adapter2 -A SEQ contains invalid bases (not ACGTN)" SEQ=args["adapter2"] _module=nothing _group=nothing _id=nothing _file=nothing
+        @error "--adapter2 -A SEQ... contain(s) invalid bases" SEQ=args["adapter2"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
 

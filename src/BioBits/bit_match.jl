@@ -15,7 +15,7 @@ function Base.:(==)(a::MatchRes, b::MatchRes)
     (a.score == b.score || (isnan(a.score) && isnan(b.score)))
 end
 
-function Base.isless(a::MatchRes, b::MatchRes)
+@inline function Base.isless(a::MatchRes, b::MatchRes)
     a.ncompatible < b.ncompatible
 end
 
