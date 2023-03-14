@@ -47,7 +47,15 @@ function parsing_args(args::Vector; exit_after_help = true)
             action = :store_true
     end
 
-    add_arg_group!(settings, "poly X tail trimming")
+    add_arg_group!(settings, "processing order")
+    @add_arg_table! settings begin
+        "--order", "-O"
+            help = "order of trimming and filtration processing methods. Unlisted process will not be done. See default for process names"
+            metavar = "PROCESS"
+            default = String["POLY-X", "ADAPTER-CONSENSUS", "UMI", "PRIMER", "CLIP3", "CLIP5", "QUALITY", "TAIL-N", "FILTER-N", "FILTER-LENGTH", "FILTER-COMPLEXITY"]
+    end
+
+    add_arg_group!(settings, "poly X tail trimming (POLY-X)")
     @add_arg_table! settings begin
         "--polyG"
             help = "enable trimming poly G tails"
@@ -72,18 +80,18 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "adapter trimming (after polyX trimming)")
+    add_arg_group!(settings, "adapter trimming (ADAPTER-CONSENSUS)")
     @add_arg_table! settings begin
         "--no-adapter-trim"
             help = "disable adapter and pair-end trimming"
             action = :store_true
         "--adapter1", "-a"
-            help = "read 1 adapter(s)"
+            help = "read 1 adapter(s) appended to insert DNA at 3' end"
             nargs = '+'
             metavar = "SEQ"
             default = String["AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"]
         "--adapter2", "-A"
-            help = "read 2 adapter(s)"
+            help = "read 2 adapter(s) appended to insert DNA at 3' end"
             nargs = '+'
             metavar = "SEQ"
             default = String["AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"]
@@ -102,11 +110,6 @@ function parsing_args(args::Vector; exit_after_help = true)
             default = 0 #1
             metavar = "INT"
             arg_type = Int64
-        # "--r1-r2-score-diff", "-s"
-        #     help = "if the score [0-16] difference between the 16-mers of r1 and r2 is greater than FLOAT, the insert size of the low-score read will be adapted to the high-score read"
-        #     default = 3.0
-        #     metavar = "FLOAT"
-        #     arg_type = Float64
         "--kmer-n-match", "-s"
             help = "(FOR PAIRED END) if n base matched [0-16] is less than INT, loosen matches will be made based on the match with the highest n base match"
             default = 9
@@ -159,7 +162,25 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Float64
     end
 
-    add_arg_group!(settings, "hard clipping: trim a fixed length (after adapter trimming)")
+    add_arg_group!(settings, "primer trimming (PRIMER)")
+    @add_arg_table! settings begin
+        "--primer1", "-m"
+            help = "Primers(s) at 5' end of read 1, and their reverse complement appended to 3' end of read 2"
+            nargs = '+'
+            metavar = "SEQ"
+            default = String[]
+        "--primer1", "-M"
+            help = "Primers(s) at 5' end of read 2, and their reverse complement appended to 3' end of read 1"
+            nargs = '+'
+            metavar = "SEQ"
+            default = String[]
+        "--primers", "-P"
+            help = "Primer table file. Each line is a primer set. Columns are primer1, primer2, primer name and delimited by TAB. Lines starts with `#` are ignored."
+            metavar = "FILE"
+            default = ""
+    end
+
+    add_arg_group!(settings, "hard clipping: trim a fixed length (CLIP3 & CLIP5)")
     @add_arg_table! settings begin
         "--clip-after-r1", "-b"
             help = "hard clip the 3' tails of R1 to contain only INT bases. 0 to disable."
@@ -183,7 +204,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "quality trimming: trim the tail when the average quality of bases in\na sliding window is low (after hard clipping)")
+    add_arg_group!(settings, "quality trimming: trim the tail when the average quality of bases in\na sliding window is low (QUALITY)")
     @add_arg_table! settings begin
         "--no-quality-trim"
             help = "skip quality trimming"
@@ -205,7 +226,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = String
     end
 
-    add_arg_group!(settings, "N trimming (after quality trimming)")
+    add_arg_group!(settings, "N trimming (TAIL-N & FILTER-N)")
     @add_arg_table! settings begin
         "--no-tail-n-trim"
             help = "disable removing NNNNN tail."
@@ -217,7 +238,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "length filtration (after N trimming)")
+    add_arg_group!(settings, "length filtration (FILTER-LENGTH)")
     @add_arg_table! settings begin
         "--no-length-filtration"
             help = "disable length filtration"
@@ -229,7 +250,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = String
     end
 
-    add_arg_group!(settings, "read complexity filtration (after length filtration)")
+    add_arg_group!(settings, "read complexity filtration (FILTER-COMPLEXITY)")
     @add_arg_table! settings begin
         "--enable-complexity-filtration"
             help = "enable complexity filtration"
