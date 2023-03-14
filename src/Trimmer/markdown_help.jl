@@ -37,9 +37,9 @@ Atria integrated several trimming and read filtration methods. It does the follo
    - trim poly X tail if length > INT: `--poly-length 10`
 
 2. **Adapter Trimming**
-   - specify read 1 adapter(s): `-a SEQ...` or ` --adapter1 SEQ...` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
+   - specify read 1 adapter(s): `-a SEQ...` or `--adapter1 SEQ...` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
 
-   - specify read 2 adapter(s): `-A SEQ...` or ` --adapter2 SEQ...` (default: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT) (if paired-end)
+   - specify read 2 adapter(s): `-A SEQ...` or `--adapter2 SEQ...` (default: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT) (if paired-end)
 
    - disable: `--no-adapter-trim`
 
@@ -48,12 +48,12 @@ Atria integrated several trimming and read filtration methods. It does the follo
 3. **Paired-end Consensus Calling**: the overlapped regions of read pairs are checked and corrected. *It is available only when input files are paired-end and Adapter Trimming is on.*
    - disable: `--no-consensus`
 
-4. **Hard Clip 3' end**: resize reads to a fixed length by discarding extra bases in 3' end.
+4. **Hard Clip 3' End**: resize reads to a fixed length by discarding extra bases in 3' end (tail).
    - specify the number of bases to keep in read 1: `-b INT` or `--clip-after-r1 INT` (default: disabled)
 
    - specify the number of bases to keep in read 2: `-B INT` or `--clip-after-r2 INT` (default: disabled)
 
-5. **Hard Clip 5' end**: remove the first INT bases from 5' end.
+5. **Hard Clip 5' End**: remove the first INT bases from 5' end (front).
    - specify the number of bases in read 1 to remove: `-e INT` or `--clip5-r1 INT` (default: disabled)
    
    - specify the number of bases in read 2 to remove: `-E INT` or `--clip5-r2 INT` (default: disabled)
