@@ -169,7 +169,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             nargs = '+'
             metavar = "SEQ"
             default = String[]
-        "--primer1", "-M"
+        "--primer2", "-M"
             help = "Primers(s) at 5' end of read 2, and their reverse complement appended to 3' end of read 1"
             nargs = '+'
             metavar = "SEQ"
