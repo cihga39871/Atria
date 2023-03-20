@@ -101,7 +101,7 @@ function julia_wrapper_detect_adapter_se(ARGS::Vector{String}; exit_after_help =
     
     Atria detects adapter sequences using a known adapter file. Adapter sequences are truncated to 16-bp, which are accurate enough for trimming. From experiments of many popular trimmers, increasing adapter length from 16 to 33 does not increase accuracy (Figure 4C of https://doi.org/10.46471/gigabyte.31).
 
-    Adapter detection is the last choice because its accuracy is highly based on your data. If your data have been trimmed, the remaining adapters may not enough for accurate guessing. Also, Atria cannot find adapters not listed in the known adapter file. We suggest to use adapter detection only when you cannot find the actual adapter sequence.
+    Adapter detection is the last choice because its accuracy is highly based on your data. If your data has been trimmed, the remaining adapters may not be enough for accurate guessing. Also, Atria cannot find adapters not listed in the known adapter file. We suggest using adapter detection only when you cannot find the actual adapter sequence.
 
     Besides, Atria does not automatically trim auto-detected adapters. It is your responsibility to check whether the detected adapters are real.
     
