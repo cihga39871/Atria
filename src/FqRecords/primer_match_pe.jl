@@ -61,6 +61,16 @@ end
     # r1_seq_rc = r1_seq_rc_threads[thread_id]
     # r2_seq_rc = r2_seq_rc_threads[thread_id]
 
+    r1_phead_ms = bitwise_scan(ps.primer1_seqheadset, r1.seq, 1, op.kmer_tolerance)
+    r2_phead_ms = bitwise_scan(ps.primer2_seqheadset, r2.seq, 1, op.kmer_tolerance)
+
+    if r1_phead_ms.ncompatible > op.kmer_n_match
+        r1_insert_start_idx = r1_phead_ms.idx + ps.length1
+    end
+    if r2_phead_ms.ncompatible > op.kmer_n_match
+        r2_insert_start_idx = r2_phead_ms.idx + ps.length2
+    end
+
     # adapter1 = primer2_rc
     # adapter2 = primer1_rc
 

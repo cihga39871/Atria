@@ -1,6 +1,11 @@
 
 @noinline function test_primer_match()
     @testset "Primer Match" begin
+
+        args2=["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"]
+        args = parsing_args(args2)
+        op = PEOptions(args)
+
         r1= fqreadrecord("@M03737:51:000000000-KTBYH:1:1101:21125:2738 1:N:0:GTATCGTCGT+CACCTGTT
 ACCGATGAAGAACGCAGCGAAATGCGATACGTAATGTGAATTGCAGAATTCAGTGAATCATCGAATCTTTGAACGCACATTGCGCCCGCCAGTATTCTGGCGGGCATGCCCGTTCGAGCGTCATTTCAACCCTCAAGCCCTGCTTGGTGTTGGGGACCGGCTCAGCGGGTGCGGGCTTCGGCCCGTCCCGTGCCGCCCCCGAAATGGATCGGCGGTCTCGTCGCAGCCTTCTTTGCGTAGTAACATACCACCTCGCAACAGGAGCGCGGCGCGGCCACTGCCGTAAAACGCCCAACTTTT
 +
@@ -13,7 +18,12 @@ CCCCCGGGGGGGGGGGGGGGGGGGEDDFFGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
 
         primer1 = dna"AHCGATGAAGAACRYAG"
         primer2 = dna"CTTATTGATATGCTTAAGTTCAG"
-
         ps = PrimerSet(primer1, primer2)
+
+        init_seq_rc = true
+        r1_seq_rc = LongDNA{4}()
+        r2_seq_rc = LongDNA{4}()
+
+        
     end
 end
