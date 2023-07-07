@@ -1,5 +1,8 @@
 # Atria Change Log
 
+## v3.2.2-1
+
+- Fix: undef error of is_concensused when enabling --stat (thanks to kalavattam, #3)
 ## v3.2.2
 
 - Optimize: speed up for threads <= 2.

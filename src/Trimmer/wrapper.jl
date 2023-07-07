@@ -363,6 +363,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
         @static if $do_read_stats
             r12_trim = false
+            is_consensused = false
         end
 
         # v2.1.0: If a r1/2 adapter is found, but the region of r2/1 is missing or its quality too low (mean prob < 0.6), skip PE check and just trim like single-end
@@ -382,8 +383,6 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             end
         end
 
-        is_concensused = false
-
         if r12_score > $trim_score
             # < 0: no adapter / pe matched
             is_true_positive = !is_false_positive(r1_insert_size, r1_insert_size_pe, length(r1.seq),
@@ -393,7 +392,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                 @label trim
                 @static if $do_consensus_calling
                     if r1_insert_size_decision == r2_insert_size_decision && r1_insert_size_decision > 0
-                        is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
+                        is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                     end
                 end
                 # r1_insert_size_decision >= 0 && tail_trim!(r1::FqRecord, r1_insert_size_decision)
@@ -420,19 +419,19 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             else
                 # no adapter, pe consensus for short overlap
                 @static if $do_consensus_calling
-                    is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
+                    is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                 end
             end
         else
             # no adapter, pe consensus for short overlap
             @static if $do_consensus_calling
-                is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance_consensus, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
+                is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance_consensus, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
             end
         end
 
         # stats in FqRecord:
         @static if $do_read_stats
-            adapter_trimming_stat = "Res\t$r12_trim\t$(length(r1.seq))\t$(length(r2.seq))\t|R1\t$r1_insert_size\t$r1_adapter_score\t$r1_insert_size_pe\t$r1_pe_score\t|R2\t$r2_insert_size\t$r2_adapter_score\t$r2_insert_size_pe\t$r2_pe_score\t|prob\t$r1_adapter_prob\t$r2_adapter_prob\t$r1_pe_prob\t$r2_pe_prob\t$r1_head_prob\t$r2_head_prob\t|consensus\t$is_concensused"
+            adapter_trimming_stat = "Res\t$r12_trim\t$(length(r1.seq))\t$(length(r2.seq))\t|R1\t$r1_insert_size\t$r1_adapter_score\t$r1_insert_size_pe\t$r1_pe_score\t|R2\t$r2_insert_size\t$r2_adapter_score\t$r2_insert_size_pe\t$r2_pe_score\t|prob\t$r1_adapter_prob\t$r2_adapter_prob\t$r1_pe_prob\t$r2_pe_prob\t$r1_head_prob\t$r2_head_prob\t|consensus\t$is_consensused"
             append!(r2.des, adapter_trimming_stat)
         end
     end : nothing

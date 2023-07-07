@@ -47,8 +47,8 @@
         end
 
 
-        julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f"])
-        julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-f"])
+        julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f", "--stats"])
+        julia_wrapper_atria_single_end(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-f", "--stats"])
 
         # skip finished
         julia_wrapper_atria(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration"])
