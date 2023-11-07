@@ -75,7 +75,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
 
     #======= Check identifier (not applicable in single end)=======#
-    # CheckIdentifier = nothing
+    CheckIdentifier = nothing
 
     #======= PolyX =======#
     PolyG = do_polyG ? quote
@@ -118,14 +118,15 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
 
     #======= Hard clips =======#
-    HardClip3End = do_hard_clip_3_end ? quote
+    HardClip3EndR1 = do_hard_clip_3_end ? quote
         tail_trim!(r1::FqRecord, $nclip_after)
     end : nothing
+    HardClip3EndR2 = nothing
 
-    HardClip5End = do_hard_clip_5_end ? quote
+    HardClip5EndR1 = do_hard_clip_5_end ? quote
         front_trim!(r1::FqRecord, $nclip_front::Int64)
     end : nothing
-
+    HardClip5EndR2 = nothing
 
     #======= Trim N from the tail =======#
     TailNTrim = do_tail_low_qual_trimming ? quote
@@ -170,6 +171,42 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         end
     end : nothing
 
+    ReadProcess = quote end
+    steps = OrderedDict{String, Vector{Union{Nothing,Expr}}}(
+        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+        "CheckIdentifier" => [CheckIdentifier],
+        "PolyX" => [PolyG, PolyT, PolyA, PolyC],
+        "PolyG" => [PolyG],
+        "PolyT" => [PolyT],
+        "PolyA" => [PolyA],
+        "PolyC" => [PolyC],
+        "AdapterTrim" => [AdapterTrim],
+        "HardClip3End" => [HardClip3EndR1, HardClip3EndR2],
+        "HardClip3EndR1" => [HardClip3EndR1],
+        "HardClip3EndR2" => [HardClip3EndR2],
+        "HardClip5End" => [HardClip5EndR1, HardClip5EndR2],
+        "HardClip5EndR1" => [HardClip5EndR1],
+        "HardClip5EndR2" => [HardClip5EndR2],
+        "QualityTrim" => [QualityTrim],
+        "TailNTrim" => [TailNTrim],
+        "MaxNFilter" => [MaxNFilter],
+        "LengthFilter" => [LengthFilter],
+        "ComplexityFilter" => [ComplexityFilter]
+    )
+
+    for step in args["order"]
+        step_exprs = get(steps, step, step)
+        if step_exprs isa AbstractString
+            name_list = join(collect(keys(steps)), ", ")
+            error("Invalid process name in -O or --order: $step. Possible names are $name_list.")
+        end
+        for step_expr in step_exprs
+            if isnothing(step_expr)
+                continue
+            end
+            append!(ReadProcess.args, step_expr.args)
+        end
+    end
 
     # @eval function read_processing!(r1::FqRecord, thread_id::Int)::Bool
     #     $CheckIdentifier
@@ -209,19 +246,20 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             for i in reads_range
                 r1 = r1s[i]
                 is_good = true
-                $PolyG
-                $PolyT
-                $PolyA
-                $PolyC
-                $LengthFilter
-                $AdapterTrim
-                $HardClip3End
-                $HardClip5End
-                $QualityTrim
-                $TailNTrim
-                $MaxNFilter
-                $LengthFilter
-                $ComplexityFilter
+                # $PolyG
+                # $PolyT
+                # $PolyA
+                # $PolyC
+                # $LengthFilter
+                # $AdapterTrim
+                # $HardClip3End
+                # $HardClip5End
+                # $QualityTrim
+                # $TailNTrim
+                # $MaxNFilter
+                # $LengthFilter
+                # $ComplexityFilter
+                $ReadProcess
                 @label stop_read_processing
                 @inbounds isgoods[i] = is_good
             end

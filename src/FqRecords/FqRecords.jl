@@ -34,9 +34,9 @@ seq_complexity,
 polyX_tail_scan,
 pe_consensus!
 
+using Reexport
 
-
-using Base.Threads
+@reexport using Base.Threads
 using ..BioBits
 using ..BioBits.BioSymbols
 using ..BioBits.BioSequences

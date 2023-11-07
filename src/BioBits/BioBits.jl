@@ -1,8 +1,10 @@
 
 module BioBits
 
-using BioSymbols
-using BioSequences
+using Reexport
+
+@reexport using BioSymbols
+@reexport using BioSequences
 
 include("biosequences_safety.jl")
 export bitsafe!, 

@@ -97,6 +97,15 @@ end
     
     perform_consensus_and_trim!(r1, r2, r1_seq_rc, r2_seq_rc, best_adapter_pe_res, op)
 end
+@inline function adapter_match_and_trim_pe!(adapter1_seqheadset::SeqHeadSet, adapter2_seqheadset::SeqHeadSet,
+    adapter1::LongDNA{4}, adapter2::LongDNA{4},
+    r1::FqRecord, r2::FqRecord,
+    r1_seq_rc::LongDNA{4}, r2_seq_rc::LongDNA{4}, op::PEOptions)
+
+    best_adapter_pe_res = adapter_match_pe(adapter1_seqheadset, adapter2_seqheadset, r1, r2, adapter1, adapter2, true, r1_seq_rc, r2_seq_rc, op)
+    
+    perform_consensus_and_trim!(r1, r2, r1_seq_rc, r2_seq_rc, best_adapter_pe_res, op)
+end
 
 @inline function adapter_match_pe(adapter1_seqheadset::SeqHeadSet, adapter2_seqheadset::SeqHeadSet,
         r1::FqRecord, r2::FqRecord, adapter1::LongDNA{4}, adapter2::LongDNA{4},

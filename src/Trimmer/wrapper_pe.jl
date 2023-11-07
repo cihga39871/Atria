@@ -33,7 +33,13 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     adapter2s                 = LongDNA{4}.(args["adapter2"])
     adapter1_seqheadsets      = SeqHeadSet.(adapter1s)
     adapter2_seqheadsets      = SeqHeadSet.(adapter2s)
-    op                        = PEOptions(args)  # adapter and primer match options
+    # first adapter
+    adapter1                 = adapter1s[1]
+    adapter2                 = adapter2s[1]
+    adapter1_seqheadset      = adapter1_seqheadsets[1]
+    adapter2_seqheadset      = adapter2_seqheadsets[1]
+    # adapter and primer match options
+    op                        = PEOptions(args)
 
     # hard clip
     nclip_after_r1        = args["clip-after-r1"]
@@ -207,16 +213,70 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
 
     #======= adapter trimming =======#
-    AdapterTrim = do_adapter_trimming ? quote
-        r1_seq_rc = $r1_seq_rc_threads[thread_id]
-        r2_seq_rc = $r2_seq_rc_threads[thread_id]
-        adapter_match_and_trim_pe!(
-            $adapter1_seqheadsets, $adapter2_seqheadsets,
-            $adapter1s, $adapter2s, r1, r2,
-            true, r1_seq_rc, r2_seq_rc, $op
-        )
-    end : nothing
+    AdapterTrim = if do_adapter_trimming
+        if length(adapter1_seqheadsets) == 1
+            quote
+                r1_seq_rc = $r1_seq_rc_threads[thread_id]
+                r2_seq_rc = $r2_seq_rc_threads[thread_id]
+                adapter_match_and_trim_pe!(
+                    $adapter1_seqheadsets, $adapter2_seqheadsets,
+                    $adapter1s, $adapter2s, r1, r2,
+                    true, r1_seq_rc, r2_seq_rc, $op
+                )
+            end
+        else
+            quote
+                r1_seq_rc = $r1_seq_rc_threads[thread_id]
+                r2_seq_rc = $r2_seq_rc_threads[thread_id]
+                adapter_match_and_trim_pe!(
+                    $adapter1_seqheadset, $adapter2_seqheadset,
+                    $adapter1, $adapter2, r1, r2,
+                    r1_seq_rc, r2_seq_rc, $op
+                )
+            end
+        end
+    else
+        nothing
+    end
 
+
+    ReadProcess = quote end
+    steps = OrderedDict{String, Vector{Union{Nothing,Expr}}}(
+        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+        "CheckIdentifier" => [CheckIdentifier],
+        "PolyX" => [PolyG, PolyT, PolyA, PolyC],
+        "PolyG" => [PolyG],
+        "PolyT" => [PolyT],
+        "PolyA" => [PolyA],
+        "PolyC" => [PolyC],
+        "AdapterTrim" => [AdapterTrim],
+        "HardClip3End" => [HardClip3EndR1, HardClip3EndR2],
+        "HardClip3EndR1" => [HardClip3EndR1],
+        "HardClip3EndR2" => [HardClip3EndR2],
+        "HardClip5End" => [HardClip5EndR1, HardClip5EndR2],
+        "HardClip5EndR1" => [HardClip5EndR1],
+        "HardClip5EndR2" => [HardClip5EndR2],
+        "QualityTrim" => [QualityTrim],
+        "TailNTrim" => [TailNTrim],
+        "MaxNFilter" => [MaxNFilter],
+        "LengthFilter" => [LengthFilter],
+        "ComplexityFilter" => [ComplexityFilter]
+    )
+
+    for step in args["order"]
+        step_exprs = get(steps, step, step)
+        if step_exprs isa AbstractString
+            name_list = join(collect(keys(steps)), ", ")
+            error("Invalid process name in -O or --order: $step. Possible names are $name_list.")
+        end
+        for step_expr in step_exprs
+            if isnothing(step_expr)
+                continue
+            end
+            append!(ReadProcess.args, step_expr.args)
+        end
+    end
+    
     #=AdapterTrim = do_adapter_trimming ? quote
         # rx_seq_rc is not initialized by this rx
         r1_seq_rc = $r1_seq_rc_threads[thread_id]
@@ -380,26 +440,6 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
     =#
 
-
-    # @eval function read_processing!(r1::FqRecord, r2::FqRecord, thread_id::Int)::Bool
-    #     $CheckIdentifier
-    #     $PolyG
-    #     $PolyT
-    #     $PolyA
-    #     $PolyC
-    #     $LengthFilter
-    #     $AdapterTrim
-    #     $HardClip3End
-    #     $HardClip5End
-    #     $QualityTrim
-    #     $TailNTrim
-    #     $MaxNFilter
-    #     $LengthFilter
-    #     $ComplexityFilter
-    #     true
-    # end
-    # moved from thread_trim.jl to fix world age error.
-   
     @eval function processing_reads_threads!(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
         if length(isgoods) < n_reads
             resize!(isgoods, n_reads)
@@ -413,22 +453,23 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                 r1 = r1s[i]
                 r2 = r2s[i]
                 is_good = true
-                $CheckIdentifier
-                $PolyG
-                $PolyT
-                $PolyA
-                $PolyC
-                $LengthFilter
-                $AdapterTrim
-                $HardClip3EndR1
-                $HardClip3EndR2
-                $HardClip5EndR1
-                $HardClip5EndR2
-                $QualityTrim
-                $TailNTrim
-                $MaxNFilter
-                $LengthFilter
-                $ComplexityFilter
+                # $CheckIdentifier
+                # $PolyG
+                # $PolyT
+                # $PolyA
+                # $PolyC
+                # $LengthFilter
+                # $AdapterTrim
+                # $HardClip3EndR1
+                # $HardClip3EndR2
+                # $HardClip5EndR1
+                # $HardClip5EndR2
+                # $QualityTrim
+                # $TailNTrim
+                # $MaxNFilter
+                # $LengthFilter
+                # $ComplexityFilter
+                $ReadProcess
                 @label stop_read_processing
                 @inbounds isgoods[i] = is_good
             end

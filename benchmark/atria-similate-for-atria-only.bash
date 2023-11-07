@@ -7,21 +7,26 @@ a2=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
 r1="reads_diff_indel.R1.fastq"
 r2="reads_diff_indel.R2.fastq"
 
-r1="reads_diff_indel.R1.fastq.gz"
-r2="reads_diff_indel.R2.fastq.gz"
+# r1="reads_diff_indel.R1.fastq.gz"
+# r2="reads_diff_indel.R2.fastq.gz"
 
 atria_old=/export/home/CFIA-ACIA/chuanj/software/Atria/app-3.2.1/bin/atria
 atria_new=atria
 
-atria_old=/home/jc/projects/atria/app-3.2.1/bin/atria
-atria_new=/home/jc/projects/atria/app-4.0.0-dev/bin/atria
+atria_old=/home/jc/projects/Atria/app-3.2.2-1/bin/atria
+atria_new=/home/jc/projects/Atria/app-4.0.0-dev/bin/atria
+atria_new=/home/jc/projects/Atria/app-4.0.0-devOrderAndFaster/bin/atria
 
 
 . $atria/benchmark/trimming-functions.bash
 
-atria simulate --prefix reads_diff_indel --adapter1 $a1 --adapter2 $a2 --repeat 300000 --subsitution-rate 0.001 0.002 0.003 0.004 0.005 --insertion-rate 1.0e-5 2.0e-5 3.0e-5 4.0e-5 5.0e-5 --deletion-rate 1.0e-5 2.0e-5 3.0e-5 4.0e-5 5.0e-5 -s 100 -i `seq 66 2 120`
+# atria simulate --prefix reads_diff_indel --adapter1 $a1 --adapter2 $a2 --repeat 300000 --subsitution-rate 0.001 0.002 0.003 0.004 0.005 --insertion-rate 1.0e-5 2.0e-5 3.0e-5 4.0e-5 5.0e-5 --deletion-rate 1.0e-5 2.0e-5 3.0e-5 4.0e-5 5.0e-5 -s 100 -i `seq 66 2 120`
+atria simulate --prefix reads_diff_indel --adapter1 $a1 --adapter2 $a2 --repeat 300000 --subsitution-rate 0.001 0.003 0.005 --insertion-rate 1.0e-5 3.0e-5 5.0e-5 --deletion-rate 1.0e-5 3.0e-5 5.0e-5 -s 100 -i `seq 78 2 108`
 
-NUM_BASES=`echo "42000000 * 200" | bc`
+NUM_READS=`wc -l reads_diff_indel.R1.fastq | cut -f1 -d" "`
+NUM_BASES=`echo "$NUM_READS / 4 * 200" | bc`
+echo NUM_BASES=$NUM_BASES
+
 
 run_atria_src(){
     local num_threads=1
@@ -63,7 +68,7 @@ run_atria_new(){
     fi
     $time -v $atria_new --no-consensus -t $num_threads \
         -r $r1 -R $r2 \
-        -o Atria-new \
+        -o Atria-new-2 \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --force
 }
@@ -75,7 +80,7 @@ run_atria_consensus_new(){
     fi
     $time -v $atria_new \
         -r $r1 -R $r2 \
-        -o Atria-consensus-new \
+        -o Atria-consensus-new-2 \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 -t $num_threads --force
 }

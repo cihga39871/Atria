@@ -29,11 +29,26 @@ Atria skips completed analysis by default. Use `-f` or `--force` to disable the 
 
 Order of trimming and filtration processing methods. Unlisted process will not be done. See default for process names.
 
-- `--order PROCESS...` or `-O PROCESS...` (default: `POLY-X ADAPTER-CONSENSUS UMI PRIMER CLIP3 CLIP5 QUALITY TAIL-N FILTER-N FILTER-LENGTH FILTER-COMPLEXITY`)
+- `--order PROCESS...` or `-O PROCESS...`: default:  
 
-### Trimming methods
+   - CheckIdentifier
+   - PolyG
+   - PolyT
+   - PolyA
+   - PolyC
+   - LengthFilter
+   - AdapterTrim
+   - HardClip3EndR1
+   - HardClip3EndR2
+   - HardClip5EndR1
+   - HardClip5EndR2
+   - QualityTrim
+   - TailNTrim
+   - MaxNFilter
+   - ComplexityFilter
 
-#### Poly X Tail Trimming
+
+### Poly X Tail Trimming (PolyG / PolyT / PolyA / PolyC)
 
 Remove poly-X tails. Suggest to enable `--polyG` for Illumina NextSeq/NovaSeq data.
 
@@ -41,7 +56,9 @@ Remove poly-X tails. Suggest to enable `--polyG` for Illumina NextSeq/NovaSeq da
 
 - Trim poly X tail if length > INT: `--poly-length 10`
 
-#### Adapter Trimming
+### Adapter Trimming (AdapterTrim)
+
+Multiple adater pairs are allowed from Atria v4.
 
 - Read 1 adapter(s) (after DNA insert): `-a SEQ...` or `--adapter1 SEQ...` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
 
@@ -58,7 +75,82 @@ The overlapped regions of read pairs are checked and corrected. **It is availabl
 
 - Disable: `--no-consensus`
 
-#### UMI (Unique Molecular Identifier)
+### Hard Clip 3' End (HardClip3EndR1 / HardClip3EndR2)
+
+Resize reads to a fixed length by discarding extra bases in 3' end (tail).
+
+- Number of bases to keep in read 1: `-b INT` or `--clip-after-r1 INT` (default: disabled)
+
+- Number of bases to keep in read 2: `-B INT` or `--clip-after-r2 INT` (default: disabled)
+
+### Hard Clip 5' End (HardClip5EndR1 / HardClip5EndR2)
+
+Remove the first INT bases from 5' end (front).
+
+- Number of bases to remove in read 1: `-e INT` or `--clip5-r1 INT` (default: disabled)
+
+- Number of bases to remove in read 2: `-E INT` or `--clip5-r2 INT` (default: disabled)
+
+### Quality Trimming (QualityTrim)
+
+Trim low-quality tails. Trimming read tails when the average quality of bases in a sliding window is low.
+
+- Average quality threshold: `-q 20` or `--quality-score 20` (default: 20)
+
+- Sliding window length: `--quality-kmer 5` (default: 5)
+
+- FastQ quality format: `--quality-format Illumina1.8`, or `--quality-format 33` (default: 33, ie. Illumina1.8)
+
+- Disable: `--no-quality-trim`
+
+### Tail N Trimming (TailNTrim)
+
+Trim N tails.
+   - Disable: `--no-tail-n-trim`
+
+### Max N Filtration (MaxNFilter)
+
+Discard a read pair if the number of N in one read is greater than a certain amount. N tails are ignored if Tail N Trimming is on.
+
+- Number of N allowed in each read: `-n 15` or `--max-n 15` (default: 15)
+
+- Disable: `-n -1` or `--max-n -1`
+
+### Length Filtration (LengthFilter)
+
+Filter read pair length in a range.
+- Read length range: `--length-range 50:500` (default: 50:500)
+
+- Disable: `--no-length-filtration`
+
+### Complexity Filtration (ComplexityFilter)
+
+Discard reads with low complexity. Complexity is the percentage of base that is different from its next base.
+
+    - Enable: `--enable-complexity-filtration` (default: disabled)
+
+    - Complexity threshold: `--min-complexity 0.3` (default: 0.3)
+
+### Parallel computing
+
+- Use INT threads: `-t 8` or `--threads 8` (default: 8)
+
+- If memory is not sufficient, use `--log2-chunk-size INT` where INT is from 23 to 25. Memory usage reduces exponentially as it decreases.
+
+Try `atria -h` or `atria --help` for more information.
+"""
+
+function atria_markdown_help()
+   println(stderr)
+   show(stderr, "text/plain", atria_markdown_help_text)
+   println(stderr)
+end
+
+
+#= Future supports
+==================
+
+### UMI (Unique Molecular Identifier)
 
 Trim and extract UMI to the first part of read names, so they can be presented in BAM records after mapping.
 
@@ -73,7 +165,7 @@ Trim and extract UMI to the first part of read names, so they can be presented i
    + UMI length argument `--umi-len INT` is required. 
    + Skip several bases after UMI: `--umi-skip INT` (default: 0) 
 
-#### Primer Trimming
+### Primer Trimming
 
 Trim primers from 5' and 3' ends (default: no primer trimming)
 
@@ -88,71 +180,5 @@ Trim primers from 5' and 3' ends (default: no primer trimming)
    + Deliminator is TAB (`\t`).
    + No header line; Lines starts with `#` are ignored.
 
-#### Hard Clip 3' End
 
-Resize reads to a fixed length by discarding extra bases in 3' end (tail).
-
-- Number of bases to keep in read 1: `-b INT` or `--clip-after-r1 INT` (default: disabled)
-
-- Number of bases to keep in read 2: `-B INT` or `--clip-after-r2 INT` (default: disabled)
-
-#### Hard Clip 5' End
-
-Remove the first INT bases from 5' end (front).
-
-- Number of bases to remove in read 1: `-e INT` or `--clip5-r1 INT` (default: disabled)
-
-- Number of bases to remove in read 2: `-E INT` or `--clip5-r2 INT` (default: disabled)
-
-#### Quality Trimming
-
-Trim low-quality tails. Trimming read tails when the average quality of bases in a sliding window is low.
-
-- Average quality threshold: `-q 20` or `--quality-score 20` (default: 20)
-
-- Sliding window length: `--quality-kmer 5` (default: 5)
-
-- FastQ quality format: `--quality-format Illumina1.8`, or `--quality-format 33` (default: 33, ie. Illumina1.8)
-
-- Disable: `--no-quality-trim`
-
-#### Tail N Trimming
-
-Trim N tails.
-   - Disable: `--no-tail-n-trim`
-
-#### N Filtration
-
-Discard a read pair if the number of N in one read is greater than a certain amount. N tails are ignored if Tail N Trimming is on.
-
-- Number of N allowed in each read: `-n 15` or `--max-n 15` (default: 15)
-
-- Disable: `-n -1` or `--max-n -1`
-
-#### Read Length Filtration
-
-Filter read pair length in a range.
-- Read length range: `--length-range 50:500` (default: 50:500)
-
-- Disable: `--no-length-filtration`
-
-#### Read Complexity Filtration
-
-Discard reads with low complexity. Complexity is the percentage of base that is different from its next base.
-
-    - Enable: `--enable-complexity-filtration` (default: disabled)
-
-    - Complexity threshold: `--min-complexity 0.3` (default: 0.3)
-
-### Parallel (multi-threading) computing
-
-- Use INT threads: `-t 8` or `--threads 8` (default: 8)
-
-- If memory is not sufficient, use `--log2-chunk-size INT` where INT is from 23 to 25. Memory usage reduces exponentially as it decreases.
-"""
-
-function atria_markdown_help()
-   println(stderr)
-   show(stderr, "text/plain", atria_markdown_help_text)
-   println(stderr)
-end
+=#

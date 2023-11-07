@@ -17,20 +17,22 @@ module Atria
 # using Markdown
 # using PrettyTables
 
+using Reexport
+
 include(joinpath("BioBits", "BioBits.jl"))
-using .BioBits
+@reexport using .BioBits
 
 include(joinpath("FqRecords", "FqRecords.jl"))
-using .FqRecords
+@reexport using .FqRecords
 
 include(joinpath("Trimmer", "Trimmer.jl"))
-using .Trimmer
+@reexport using .Trimmer
 
 include(joinpath("Benchmark", "Benchmark.jl"))
-using .Benchmark
+@reexport using .Benchmark
 
 include(joinpath("AtriaTest", "AtriaTest.jl"))
-using .AtriaTest
+@reexport using .AtriaTest
 
 
 function julia_main()::Cint

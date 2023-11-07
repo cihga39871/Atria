@@ -36,7 +36,7 @@
         else
             run(`pigz --keep peReadSimulated.R1.randtrim.fastq`)
             run(`pigz --keep peReadSimulated.R2.randtrim.fastq`)
-            Trimmer.julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "--check-identifier", "-f"])
+            julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "--check-identifier", "-f"])
             julia_wrapper_atria_se(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz", "-f"])
             julia_wrapper_detect_adapter_se(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"])
             julia_wrapper_detect_adapter_pe(["-r", "peReadSimulated.R1.randtrim.fastq.gz", "-R", "peReadSimulated.R2.randtrim.fastq.gz", "-e", "8", "-E", "8", "--compress", "gz"])
@@ -50,6 +50,10 @@
 
         julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f"])
         julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-f"])
+        
+        # multiple adapters
+        julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f", "-a", "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA", "CTGTCTCTTATACACATCT", "-A", "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT", "CTGTCTCTTATACACATCT"])
+        julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-a", "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA", "CTGTCTCTTATACACATCT", "-f"])
 
         # skip finished
         julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration"])

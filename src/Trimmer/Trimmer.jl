@@ -16,25 +16,25 @@ get_quality_offset,
 get_length_range,
 f_procs
 
-using ArgParse
-using BioSymbols
-using BioSequences
-using Distributed
-using Logging
-using JSON
-using DataStructures
-using Printf
-using Markdown
-using PrettyTables
-using DataFrames
-using CSV
-using Dates
-using Statistics
+using Reexport
 
-using ..BioBits
-using ..BioBits.BioSymbols
-using ..BioBits.BioSequences
-using ..FqRecords
+@reexport using ArgParse
+@reexport using BioSymbols
+@reexport using BioSequences
+@reexport using Distributed
+@reexport using Logging
+@reexport using JSON
+@reexport using DataStructures
+@reexport using Printf
+@reexport using Markdown
+@reexport using PrettyTables
+@reexport using DataFrames
+@reexport using CSV
+@reexport using Dates
+@reexport using Statistics
+
+@reexport using ..BioBits
+@reexport using ..FqRecords
 
 using Pkg
 const atria_version = @eval($(string("v", Pkg.project().version)))

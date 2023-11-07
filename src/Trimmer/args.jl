@@ -3,7 +3,35 @@ function parsing_args(args::Vector; exit_after_help = true)
         prog = "atria",
         description = "Atria $atria_version",
         version = atria_version, add_version = true, exit_after_help = exit_after_help,
-        epilog = """Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31\n"""
+        preformatted_epilog = true,
+        epilog = """
+
+        ----------
+        Process names for --order | -O:
+            DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+            CheckIdentifier ,
+            PolyX           = [PolyG, PolyT, PolyA, PolyC],
+            PolyG           ,
+            PolyT           ,
+            PolyA           ,
+            PolyC           ,
+            AdapterTrim     ,
+            HardClip3End    = [HardClip3EndR1, HardClip3EndR2],
+            HardClip3EndR1  ,
+            HardClip3EndR2  ,
+            HardClip5End    = [HardClip5EndR1, HardClip5EndR2],
+            HardClip5EndR1  ,
+            HardClip5EndR2  ,
+            QualityTrim     ,
+            TailNTrim       ,
+            MaxNFilter      ,
+            LengthFilter    ,
+            ComplexityFilter.
+
+        ----------
+
+        Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31\n
+        """
     )
     @add_arg_table! settings begin
         "--threads", "-t"
@@ -50,12 +78,12 @@ function parsing_args(args::Vector; exit_after_help = true)
     add_arg_group!(settings, "processing order")
     @add_arg_table! settings begin
         "--order", "-O"
-            help = "order of trimming and filtration processing methods. Unlisted process will not be done. See default for process names"
+            help = "order of trimming and filtration processing methods. Unlisted process will not be done. See epilog for process names"
             metavar = "PROCESS"
-            default = String["POLY-X", "ADAPTER-CONSENSUS", "UMI", "PRIMER", "CLIP3", "CLIP5", "QUALITY", "TAIL-N", "FILTER-N", "FILTER-LENGTH", "FILTER-COMPLEXITY"]
+            default = String["DefaultOrder"]
     end
 
-    add_arg_group!(settings, "poly X tail trimming (POLY-X)")
+    add_arg_group!(settings, "poly X tail trimming")
     @add_arg_table! settings begin
         "--polyG"
             help = "enable trimming poly G tails"
@@ -80,7 +108,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "adapter trimming (ADAPTER-CONSENSUS)")
+    add_arg_group!(settings, "adapter trimming")
     @add_arg_table! settings begin
         "--no-adapter-trim"
             help = "disable adapter and pair-end trimming"
@@ -162,25 +190,25 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Float64
     end
 
-    add_arg_group!(settings, "primer trimming (PRIMER)")
-    @add_arg_table! settings begin
-        "--primer1", "-m"
-            help = "Primers(s) at 5' end of read 1, and their reverse complement appended to 3' end of read 2"
-            nargs = '+'
-            metavar = "SEQ"
-            default = String[]
-        "--primer2", "-M"
-            help = "Primers(s) at 5' end of read 2, and their reverse complement appended to 3' end of read 1"
-            nargs = '+'
-            metavar = "SEQ"
-            default = String[]
-        "--primers", "-P"
-            help = "Primer table file. Each line is a primer set. Columns are primer1, primer2, primer name and delimited by TAB. Lines starts with `#` are ignored."
-            metavar = "FILE"
-            default = ""
-    end
+    # add_arg_group!(settings, "primer trimming (PRIMER)")
+    # @add_arg_table! settings begin
+    #     "--primer1", "-m"
+    #         help = "Primers(s) at 5' end of read 1, and their reverse complement appended to 3' end of read 2"
+    #         nargs = '+'
+    #         metavar = "SEQ"
+    #         default = String[]
+    #     "--primer2", "-M"
+    #         help = "Primers(s) at 5' end of read 2, and their reverse complement appended to 3' end of read 1"
+    #         nargs = '+'
+    #         metavar = "SEQ"
+    #         default = String[]
+    #     "--primers", "-P"
+    #         help = "Primer table file. Each line is a primer set. Columns are primer1, primer2, primer name and delimited by TAB. Lines starts with `#` are ignored."
+    #         metavar = "FILE"
+    #         default = ""
+    # end
 
-    add_arg_group!(settings, "hard clipping: trim a fixed length (CLIP3 & CLIP5)")
+    add_arg_group!(settings, "hard clipping: trim a fixed length")
     @add_arg_table! settings begin
         "--clip-after-r1", "-b"
             help = "hard clip the 3' tails of R1 to contain only INT bases. 0 to disable."
@@ -204,7 +232,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "quality trimming: trim the tail when the average quality of bases in\na sliding window is low (QUALITY)")
+    add_arg_group!(settings, "quality trimming: trim the tail when the average quality of bases in\na sliding window is low")
     @add_arg_table! settings begin
         "--no-quality-trim"
             help = "skip quality trimming"
@@ -226,7 +254,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = String
     end
 
-    add_arg_group!(settings, "N trimming (TAIL-N & FILTER-N)")
+    add_arg_group!(settings, "N trimming")
     @add_arg_table! settings begin
         "--no-tail-n-trim"
             help = "disable removing NNNNN tail."
@@ -238,7 +266,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "length filtration (FILTER-LENGTH)")
+    add_arg_group!(settings, "length filtration")
     @add_arg_table! settings begin
         "--no-length-filtration"
             help = "disable length filtration"
@@ -250,7 +278,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = String
     end
 
-    add_arg_group!(settings, "read complexity filtration (FILTER-COMPLEXITY)")
+    add_arg_group!(settings, "complexity filtration")
     @add_arg_table! settings begin
         "--enable-complexity-filtration"
             help = "enable complexity filtration"
