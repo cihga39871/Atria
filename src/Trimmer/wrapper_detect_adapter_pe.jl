@@ -46,7 +46,6 @@ function julia_wrapper_detect_adapter_pe(ARGS::Vector{String}; exit_after_help =
     r1s = Vector{FqRecord}()
     r2s = Vector{FqRecord}()
 
-
     time_program_initializing = time() - time_program_initializing
 
     adapter_detection_summary = init_adapter_detection_summary()
@@ -110,7 +109,8 @@ function julia_wrapper_detect_adapter_pe(ARGS::Vector{String}; exit_after_help =
         in2bytes_nremain = 0
 
         #================== File processing ====================#
-
+        task_r1s_unbox = Threads.@spawn 1
+        task_r2s_unbox = Threads.@spawn 1
 
         # the first cycle to generate compiled code?
         function cycle_wrapper()
@@ -121,7 +121,7 @@ function julia_wrapper_detect_adapter_pe(ARGS::Vector{String}; exit_after_help =
             if typeof(io1) <: IOStream  # not compressed
                 length(in1bytes) == chunk_size1 || resize!(in1bytes, chunk_size1)
                 length(in2bytes) == chunk_size2 || resize!(in2bytes, chunk_size2)
-                (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
+                (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s, task_r1s_unbox, task_r2s_unbox; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
                 total_n_bytes_read2 += length(in2bytes)  # will read INT in this batch
@@ -130,7 +130,7 @@ function julia_wrapper_detect_adapter_pe(ARGS::Vector{String}; exit_after_help =
                 (n_r1, n_r2, r1s, r2s, in1bytes_nremain, in2bytes_nremain, ncopied) = load_fqs_threads!(
                     io1, io2,
                     in1bytes, in2bytes, in1bytes_nremain, in2bytes_nremain,
-                    vr1s, vr2s, r1s, r2s;
+                    vr1s, vr2s, r1s, r2s, task_r1s_unbox, task_r2s_unbox;
                     will_eof1 = will_eof1, will_eof2 = will_eof2,
                     in1bytes_resize_before_read = chunk_size1,
                     in2bytes_resize_before_read = chunk_size2,

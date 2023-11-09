@@ -208,24 +208,6 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         end
     end
 
-    # @eval function read_processing!(r1::FqRecord, thread_id::Int)::Bool
-    #     $CheckIdentifier
-    #     $PolyG
-    #     $PolyT
-    #     $PolyA
-    #     $PolyC
-    #     $LengthFilter
-    #     $AdapterTrim
-    #     $HardClip3End
-    #     $HardClip5End
-    #     $QualityTrim
-    #     $TailNTrim
-    #     $MaxNFilter
-    #     $LengthFilter
-    #     $ComplexityFilter
-    #     return true
-    # end
-
     # moved from thread_trim.jl to fix world age error.
     function processing_reads_range!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, reads_range::UnitRange{Int64})
         this_threadid = Threads.threadid()
@@ -234,7 +216,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         end
     end
     @eval function processing_reads_threads!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
-        if length(isgoods) < n_reads
+        if length(isgoods) != n_reads
             resize!(isgoods, n_reads)
         end
         # split reads to N reads per batch
@@ -246,19 +228,6 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             for i in reads_range
                 r1 = r1s[i]
                 is_good = true
-                # $PolyG
-                # $PolyT
-                # $PolyA
-                # $PolyC
-                # $LengthFilter
-                # $AdapterTrim
-                # $HardClip3End
-                # $HardClip5End
-                # $QualityTrim
-                # $TailNTrim
-                # $MaxNFilter
-                # $LengthFilter
-                # $ComplexityFilter
                 $ReadProcess
                 @label stop_read_processing
                 @inbounds isgoods[i] = is_good
@@ -274,10 +243,10 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
     r1s = Vector{FqRecord}()
 
-    isgoods = Vector{Bool}()
+    isgoods_even = Vector{Bool}()
+    isgoods_odd = Vector{Bool}()
 
     outr1s = Vector{Vector{UInt8}}()
-
 
 
     time_program_initializing = time() - time_program_initializing
@@ -423,12 +392,12 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         time_read_processing = time()
 
         # the first cycle to generate compiled code?
-        function cycle_wrapper_single_end(task_write1)
+        function cycle_wrapper_single_end(task_r1s_unbox, task_write1)
             nbatch += 1
             n_r1_before = length(r1s) - n_reads
 
             if typeof(io1) <: IOStream  # not compressed
-                (n_r1, r1s, ncopied) = load_fqs_threads!(io1, in1bytes, vr1s, r1s; remove_first_n = n_reads, njobs=njobs)
+                (n_r1, r1s, ncopied) = load_fqs_threads!(io1, in1bytes, vr1s, r1s, task_r1s_unbox; remove_first_n = n_reads, njobs=njobs)
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
                 (n_r1, r1s, in1bytes_nremain, ncopied) = load_fqs_threads!(
@@ -436,7 +405,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
                     in1bytes,
                     in1bytes_nremain,
                     vr1s,
-                    r1s;
+                    r1s,
+                    task_r1s_unbox;
                     remove_first_n = n_reads,
                     njobs = njobs
                 )
@@ -445,12 +415,13 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             n_reads = n_r1
             total_read_copied_in_loading += ncopied
 
+            isgoods = nbatch % 2 == 0 ? isgoods_even : isgoods_odd  # write task is still using the other one! 
             Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
 
-            task_write1 = write_fqs_threads!(
+            task_r1s_unbox, task_write1 = write_fqs_threads!(
                 io1out::IO,
                 outr1s::Vector{Vector{UInt8}},
                 r1s::Vector{FqRecord},
@@ -462,12 +433,14 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
             # @info "Cycle $nbatch: processed $n_reads reads ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
             @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
-            return task_write1
+            return task_r1s_unbox, task_write1
         end
 
+        task_r1s_unbox = Threads.@spawn 1
         task_write1 = Threads.@spawn 1
+
         while !eof(io1::IO)
-            task_write1 = cycle_wrapper_single_end(task_write1)
+            task_r1s_unbox, task_write1 = cycle_wrapper_single_end(task_r1s_unbox, task_write1)
         end
 
         @info "ATRIA COMPLETE" read=outfile1

@@ -84,7 +84,11 @@ end
 
     best_adapter_pe_res = AdapterPERes(false, 9223372036854775807, 9223372036854775807, -1.0, dna"", dna"")
     
-    for (adapter1_seqheadset, adapter2_seqheadset, adapter1, adapter2) in zip(adapter1_seqheadsets, adapter2_seqheadsets, adapter1s, adapter2s)
+    # for (adapter1_seqheadset, adapter2_seqheadset, adapter1, adapter2) in zip(adapter1_seqheadsets, adapter2_seqheadsets, adapter1s, adapter2s)  # zip is slow
+    for (i, adapter1) in enumerate(adapter1s)
+        adapter1_seqheadset = adapter1_seqheadsets[i]
+        adapter2_seqheadset = adapter2_seqheadsets[i]
+        adapter2 = adapter2s[i]
         adapter_pe_res = adapter_match_pe(adapter1_seqheadset, adapter2_seqheadset, r1, r2, adapter1, adapter2, init_seq_rc, r1_seq_rc, r2_seq_rc, op)
 
         init_seq_rc = false
@@ -229,10 +233,9 @@ end
     if res.need_trim
         # consensus
         if op.do_consensus_calling && res.r1_insert_size == res.r2_insert_size && res.r1_insert_size > 0
-            is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, res.r1_insert_size; min_ratio_mismatch=op.min_ratio_mismatch, prob_diff=op.prob_diff)
+            is_concensused = pe_consensus!(r1, r2, r2_seq_rc, res.r1_insert_size; min_ratio_mismatch=op.min_ratio_mismatch, prob_diff=op.prob_diff)
         else
             is_concensused = false
-            ratio_mismatch = NaN
         end
 
         # v3.0.0-dev: If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
@@ -260,12 +263,12 @@ end
     else
         if op.do_consensus_calling
             r1_insert_size = r2_insert_size = -1
-            is_concensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=op.kmer_tolerance_consensus, overlap_score=op.overlap_score, min_ratio_mismatch=op.min_ratio_mismatch, prob_diff=op.prob_diff)
+            is_concensused = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=op.kmer_tolerance_consensus, overlap_score=op.overlap_score, min_ratio_mismatch=op.min_ratio_mismatch, prob_diff=op.prob_diff)
         else
             r1_insert_size = r2_insert_size = -1
             is_concensused = false
-            ratio_mismatch = NaN
         end
     end
-    return res.need_trim, r1_insert_size, r2_insert_size, is_concensused, ratio_mismatch
+    return nothing
+    # return res.need_trim, r1_insert_size, r2_insert_size, is_concensused
 end

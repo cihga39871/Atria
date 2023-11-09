@@ -26,6 +26,7 @@ function julia_wrapper_detect_adapter_se(ARGS::Vector{String}; exit_after_help =
 
     r1s = Vector{FqRecord}()
 
+
     #================== Iteration for files ====================#
 
     append!(args["read1"], args["read2"])
@@ -56,21 +57,23 @@ function julia_wrapper_detect_adapter_se(ARGS::Vector{String}; exit_after_help =
         n_reads = 0
         n_r1 = 0
         in1bytes_nremain = 0
-
+        task_r1s_unbox = Threads.@spawn 1
+        
         #================== File processing ====================#
 
         # the first cycle to generate compiled code?
         function cycle_wrapper_detect_adapter()
 
             if typeof(io1) <: IOStream  # not compressed
-                (n_r1, r1s, ncopied) = load_fqs_threads!(io1, in1bytes, vr1s, r1s; remove_first_n = n_reads, njobs=njobs)
+                (n_r1, r1s, ncopied) = load_fqs_threads!(io1, in1bytes, vr1s, r1s, task_r1s_unbox; remove_first_n = n_reads, njobs=njobs)
             else  # gziped
                 (n_r1, r1s, in1bytes_nremain, ncopied) = load_fqs_threads!(
                     io1,
                     in1bytes,
                     in1bytes_nremain,
                     vr1s,
-                    r1s;
+                    r1s,
+                    task_r1s_unbox;
                     remove_first_n = n_reads,
                     njobs = njobs
                 )

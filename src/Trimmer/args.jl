@@ -5,8 +5,8 @@ function parsing_args(args::Vector; exit_after_help = true)
         version = atria_version, add_version = true, exit_after_help = exit_after_help,
         preformatted_epilog = true,
         epilog = """
-
         ----------
+
         Process names for --order | -O:
             DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
             CheckIdentifier ,
@@ -30,7 +30,8 @@ function parsing_args(args::Vector; exit_after_help = true)
 
         ----------
 
-        Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31\n
+        Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31
+        
         """
     )
     @add_arg_table! settings begin

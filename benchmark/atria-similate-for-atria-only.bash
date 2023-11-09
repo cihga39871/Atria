@@ -14,8 +14,7 @@ atria_old=/export/home/CFIA-ACIA/chuanj/software/Atria/app-3.2.1/bin/atria
 atria_new=atria
 
 atria_old=/home/jc/projects/Atria/app-3.2.2-1/bin/atria
-atria_new=/home/jc/projects/Atria/app-4.0.0-dev/bin/atria
-atria_new=/home/jc/projects/Atria/app-4.0.0-devOrderAndFaster/bin/atria
+atria_new=/home/jc/projects/Atria/app-4.0.0-devFixWriteSpeed/bin/atria
 
 
 . $atria/benchmark/trimming-functions.bash
@@ -30,11 +29,15 @@ echo NUM_BASES=$NUM_BASES
 
 run_atria_src(){
     local num_threads=1
+    local outdir=Atria-src
     if [[ $1 ]]; then
         num_threads=$1
     fi
+    if [[ $2 ]]; then
+        outdir=$2
+    fi
 	export JULIA_NUM_THREADS=$num_threads
-	$atria/src/atria --no-consensus -t $num_threads -r $r1 -R $r2 -o Atria-src --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --force
+	@time $atria/src/atria --no-consensus -t $num_threads -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --force
 }
 
 run_atria(){
@@ -68,7 +71,7 @@ run_atria_new(){
     fi
     $time -v $atria_new --no-consensus -t $num_threads \
         -r $r1 -R $r2 \
-        -o Atria-new-2 \
+        -o Atria-new-4.0.0-devFixWriteSpeed \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --force
 }
@@ -80,35 +83,39 @@ run_atria_consensus_new(){
     fi
     $time -v $atria_new \
         -r $r1 -R $r2 \
-        -o Atria-consensus-new-2 \
+        -o Atria-consensus-new-4.0.0-devFixWriteSpeed \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 -t $num_threads --force
 }
 
-echo "" 2> stderr.log
-run_atria 1 2>> stderr.log
-run_atria 2 2>> stderr.log
-run_atria 4 2>> stderr.log
-run_atria 8 2>> stderr.log
-run_atria 16 2>> stderr.log
 
-run_atria_new 1 2>> stderr.log
-run_atria_new 2 2>> stderr.log
-run_atria_new 4 2>> stderr.log
-run_atria_new 8 2>> stderr.log
-run_atria_new 16 2>> stderr.log
+echo "" 2> stderr.base.log
+run_atria 1 2>> stderr.base.log
+run_atria 2 2>> stderr.base.log
+run_atria 4 2>> stderr.base.log
+run_atria 8 2>> stderr.base.log
+run_atria 16 2>> stderr.base.log
 
-run_atria_consensus 1 2>> stderr.log
-run_atria_consensus 2 2>> stderr.log
-run_atria_consensus 4 2>> stderr.log
-run_atria_consensus 8 2>> stderr.log
-run_atria_consensus 16 2>> stderr.log
+run_atria_consensus 1 2>> stderr.base.log
+run_atria_consensus 2 2>> stderr.base.log
+run_atria_consensus 4 2>> stderr.base.log
+run_atria_consensus 8 2>> stderr.base.log
+run_atria_consensus 16 2>> stderr.base.log
 
-run_atria_consensus_new 1 2>> stderr.log
-run_atria_consensus_new 2 2>> stderr.log
-run_atria_consensus_new 4 2>> stderr.log
-run_atria_consensus_new 8 2>> stderr.log
-run_atria_consensus_new 16 2>> stderr.log
+echo "" 2> stderr.dev.log
+
+
+run_atria_new 1 2>> stderr.dev.log
+run_atria_new 2 2>> stderr.dev.log
+run_atria_new 4 2>> stderr.dev.log
+run_atria_new 8 2>> stderr.dev.log
+run_atria_new 16 2>> stderr.dev.log
+
+run_atria_consensus_new 1 2>> stderr.dev.log
+run_atria_consensus_new 2 2>> stderr.dev.log
+run_atria_consensus_new 4 2>> stderr.dev.log
+run_atria_consensus_new 8 2>> stderr.dev.log
+run_atria_consensus_new 16 2>> stderr.dev.log
 
 # run_atria 16 2>> stderr.log
 # run_atria_new 16 2>> stderr.log
@@ -128,5 +135,7 @@ wait
 
 atria statplot -i auto -l DIR -F
 
-pasteTimeOutput stderr.log > time_benchmark.txt
+cat stderr.base.log stderr.dev.log > std_all.log
+pasteTimeOutput std_all.log > time_benchmark.txt
 $atria/benchmark/time_stats.jl time_benchmark.txt $NUM_BASES > time_benchmark.df.txt
+wps time_benchmark.df.txt & 
