@@ -85,7 +85,7 @@ end
     best_adapter_pe_res = AdapterPERes(false, 9223372036854775807, 9223372036854775807, -1.0, dna"", dna"")
     
     # for (adapter1_seqheadset, adapter2_seqheadset, adapter1, adapter2) in zip(adapter1_seqheadsets, adapter2_seqheadsets, adapter1s, adapter2s)  # zip is slow
-    for (i, adapter1) in enumerate(adapter1s)
+    @inboaunds for (i, adapter1) in enumerate(adapter1s)
         adapter1_seqheadset = adapter1_seqheadsets[i]
         adapter2_seqheadset = adapter2_seqheadsets[i]
         adapter2 = adapter2s[i]
