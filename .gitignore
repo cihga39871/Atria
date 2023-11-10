@@ -12,4 +12,5 @@ tmp*/*
 app*/
 app
 /atria-*
+Atria*
 Manifest.toml
