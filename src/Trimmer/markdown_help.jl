@@ -17,81 +17,127 @@ Try `atria -h` or `atria --help` for more information.
 
 The input files should be paired-end FastQ(.gz|.bz2) files (in the same order), or single-end fastqs:
 
-1. Read 1 files: `-r X_R1.FQ Y_R1.FQ.GZ ...`
+1. Read 1 files: `-r XXXX_R1.fastq YYYY_R1.fastq.gz ...`
 
-2. Read 2 files (optional): `-R X_R2.FQ Y_R2.FQ.GZ ...`
+2. Read 2 files (optional): `-R XXXX_R2.fastq YYYY_R2.fastq.gz ...`
 
 Output all files to a directory: `-o PATH` or `--output-dir PATH`. Default is the current directory.
 
 Atria skips completed analysis by default. Use `-f` or `--force` to disable the feature.
 
-### Trimming methods
+### Order of processing
 
-Atria integrated several trimming and read filtration methods. It does the following sequentially.
+Order of trimming and filtration processing methods. Unlisted process will not be done. See default for process names.
 
-1. **Poly X Tail Trimming**: remove remove poly-X tails.
+- `--order PROCESS...` or `-O PROCESS...`: default:  
 
-   suggest to enable `--polyG` for Illumina NextSeq/NovaSeq data.
+   - CheckIdentifier
+   - PolyG
+   - PolyT
+   - PolyA
+   - PolyC
+   - LengthFilter
+   - AdapterTrim
+   - HardClip3EndR1
+   - HardClip3EndR2
+   - HardClip5EndR1
+   - HardClip5EndR2
+   - QualityTrim
+   - TailNTrim
+   - MaxNFilter
+   - ComplexityFilter
 
-   - enable: `--polyG`, `--polyT`, `--polyA`, and/or `--polyC` (default: disabled)
 
-   - trim poly X tail if length > INT: `--poly-length 10`
+### Poly X Tail Trimming (PolyG / PolyT / PolyA / PolyC)
 
-2. **Adapter Trimming**
+Remove poly-X tails. Suggest to enable `--polyG` for Illumina NextSeq/NovaSeq data.
 
-   - specify read 1 adapter: `-a SEQ` or ` --adapter1 SEQ` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
+- Enable: `--polyG`, `--polyT`, `--polyA`, and/or `--polyC` (default: disabled)
 
-   - specify read 2 adapter: `-A SEQ` or ` --adapter2 SEQ` (default: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT) (if paired-end)
+- Trim poly X tail if length > INT: `--poly-length 10`
 
-   - disable: `--no-adapter-trim`
+### Adapter Trimming (AdapterTrim)
 
-   - if adapter is unknown, use `--detect-adapter`.
+Multiple adater pairs are allowed from Atria v4.
 
-3. **Paired-end Consensus Calling**: the overlapped regions of read pairs are checked and corrected. *It is available only when input files are paired-end and Adapter Trimming is on.*
-   - disable: `--no-consensus`
+- Read 1 adapter(s) (after DNA insert): `-a SEQ...` or `--adapter1 SEQ...` (default: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA)
 
-4. **Hard Clip 3' end**: resize reads to a fixed length by discarding extra bases in 3' end.
-   - specify the number of bases to keep: `-C INT` or `--clip-after INT` (default: disabled)
+- Read 2 adapter(s) (after DNA insert): `-A SEQ...` or `--adapter2 SEQ...` (default: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT) (if paired-end)
 
-5. **Hard Clip 5' end**: remove the first INT bases from 5' end.
-   - specify the number of bases to remove: `-c INT` or `--clip5 INT` (default: disabled)
+- Disable: `--no-adapter-trim`
 
-6. **Quality Trimming**: trim low-quality tails. (Trimming read tails when the average quality of bases in a sliding window is low.)
+- `--detect-adapter` if you do not know adapter sequences.
+   >Atria does not trim detected adapters automatically, please check results first.
 
-   - specify average quality threshold: `-q 20` or `--quality-score 20` (default: 20)
+#### Paired-end Consensus Calling
 
-   - specify sliding window length: `--quality-kmer 5` (default: 5)
+The overlapped regions of read pairs are checked and corrected. **It is available only when input files are paired-end and Adapter Trimming is on.**
 
-   - specify FastQ quality format: `--quality-format Illumina1.8`, or `--quality-format 33` (default: 33, ie. Illumina1.8)
+- Disable: `--no-consensus`
 
-   - disable: `--no-quality-trim`
+### Hard Clip 3' End (HardClip3EndR1 / HardClip3EndR2)
 
-7. **Tail N Trimming**: trim N tails.
-   - disable: `--no-tail-n-trim`
+Resize reads to a fixed length by discarding extra bases in 3' end (tail).
 
-8. **N Filtration**: discard a read pair if the number of N in one read is greater than a certain amount. N tails are ignored if Tail N Trimming is on.
-   - specify # N allowed in each read: `-n 15` or `--max-n 15` (default: 15)
+- Number of bases to keep in read 1: `-b INT` or `--clip-after-r1 INT` (default: disabled)
 
-   - disable: `-n -1` or `--max-n -1`
+- Number of bases to keep in read 2: `-B INT` or `--clip-after-r2 INT` (default: disabled)
 
-9. **Read Length Filtration**: filter read pair length in a range.
-   - specify read length range: `--length-range 50:500` (default: 50:500)
+### Hard Clip 5' End (HardClip5EndR1 / HardClip5EndR2)
 
-   - disable: `--no-length-filtration`
+Remove the first INT bases from 5' end (front).
 
-10. **Read Complexity Filtration**: filter reads with low complexity.
+- Number of bases to remove in read 1: `-e INT` or `--clip5-r1 INT` (default: disabled)
 
-   Complexity is the percentage of base that is different from its next base.
+- Number of bases to remove in read 2: `-E INT` or `--clip5-r2 INT` (default: disabled)
 
-   - enable: `--enable-complexity-filtration` (default: disabled)
+### Quality Trimming (QualityTrim)
 
-   - specify complexity threshold: `--min-complexity 0.3` (default: 0.3)
+Trim low-quality tails. Trimming read tails when the average quality of bases in a sliding window is low.
 
-### Parallel (multi-threading) computing
+- Average quality threshold: `-q 20` or `--quality-score 20` (default: 20)
 
-1. Specify number of threads to use: `-t 8` or `--threads 8`. (Default: 8)
+- Sliding window length: `--quality-kmer 5` (default: 5)
 
-2. If memory is not sufficient, use `--log2-chunk-size INT` where INT is from 23 to 25. Memory usage reduces exponentially as it decreases.
+- FastQ quality format: `--quality-format Illumina1.8`, or `--quality-format 33` (default: 33, ie. Illumina1.8)
+
+- Disable: `--no-quality-trim`
+
+### Tail N Trimming (TailNTrim)
+
+Trim N tails.
+   - Disable: `--no-tail-n-trim`
+
+### Max N Filtration (MaxNFilter)
+
+Discard a read pair if the number of N in one read is greater than a certain amount. N tails are ignored if Tail N Trimming is on.
+
+- Number of N allowed in each read: `-n 15` or `--max-n 15` (default: 15)
+
+- Disable: `-n -1` or `--max-n -1`
+
+### Length Filtration (LengthFilter)
+
+Filter read pair length in a range.
+- Read length range: `--length-range 50:500` (default: 50:500)
+
+- Disable: `--no-length-filtration`
+
+### Complexity Filtration (ComplexityFilter)
+
+Discard reads with low complexity. Complexity is the percentage of base that is different from its next base.
+
+    - Enable: `--enable-complexity-filtration` (default: disabled)
+
+    - Complexity threshold: `--min-complexity 0.3` (default: 0.3)
+
+### Parallel computing
+
+- Use INT threads: `-t 8` or `--threads 8` (default: 8)
+
+- If memory is not sufficient, use `--log2-chunk-size INT` where INT is from 23 to 25. Memory usage reduces exponentially as it decreases.
+
+Try `atria -h` or `atria --help` for more information.
 """
 
 function atria_markdown_help()
@@ -99,3 +145,40 @@ function atria_markdown_help()
    show(stderr, "text/plain", atria_markdown_help_text)
    println(stderr)
 end
+
+
+#= Future supports
+==================
+
+### UMI (Unique Molecular Identifier)
+
+Trim and extract UMI to the first part of read names, so they can be presented in BAM records after mapping.
+
+- Enable and specify UMI location(s): `--umi LOC...`, and LOC can be:
+   + `INDEX1`: the R1 index is UMI.
+   + `INDEX2`: the R2 index is UMI.
+   + `READ1`: the head of read1 is UMI.
+   + `READ2`: the head of read2 is UMI.
+   (default: disabled)
+
+- If UMI locations contain `READ1` and/or `READ2`:
+   + UMI length argument `--umi-len INT` is required. 
+   + Skip several bases after UMI: `--umi-skip INT` (default: 0) 
+
+### Primer Trimming
+
+Trim primers from 5' and 3' ends (default: no primer trimming)
+
+- Directly provide primer sequence(s):
+   + `-m SEQ...` or `--primer1 SEQ...`: primers(s) at 5' end of read 1, and their reverse complement appended to 3' end of read 2.
+
+   + `-M SEQ...` or `--primer1 SEQ...`: primers(s) at 5' end of read 1, and their reverse complement appended to 3' end of read 2.
+
+- Or provide a primer table: `-P FILE` or `--primers FILE`. Format of primer table:
+   + Each line is a primer set.
+   + Columns are primer1, primer2, primer name.
+   + Deliminator is TAB (`\t`).
+   + No header line; Lines starts with `#` are ignored.
+
+
+=#

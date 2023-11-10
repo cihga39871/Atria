@@ -1,5 +1,17 @@
 # Atria Change Log
 
+## TODO
+
+- Feature: multiple primer trimming.
+- Feature: UMI trimming.
+
+## v4.0.0
+
+- Optimize: algorithm: now the non-overtrim rate for reads without adapters are higher.
+- Feature: re-write trimming to allow trim multiple adapters at the same time. This change is adjusted for metabarcoding data.
+- Feature: hard-clip: now hard-clip arguments do differently for r1 and r2. This change is adjusted for metabarcoding data. Remove `-C --clip-after -c --clip5`; add `-b --clip-after-r1 -B --clip-after-r2 -e --clip5-r1 -E --clip5-r2`.
+- Optimize: --detect-adapter for paired-end reads now guess adapters from pair information, rather than the existing adapter pool.
+
 ## v3.2.2-1
 
 - Fix: undef error of is_concensused when enabling --stat (thanks to kalavattam, #3)

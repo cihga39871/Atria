@@ -1,5 +1,23 @@
 
+mutable struct MatchRes
+    idx::Int64
+    ncompatible::Int64
+    prob::Float64
+    score::Float64
+end
+function MatchRes(idx::Int64, ncompatible::Int64)
+    MatchRes(idx, ncompatible, NaN, NaN)
+end
+function Base.:(==)(a::MatchRes, b::MatchRes)
+    (a.idx == b.idx) &&
+    (a.ncompatible == b.ncompatible) &&
+    (a.prob == b.prob || (isnan(a.prob) && isnan(b.prob))) &&
+    (a.score == b.score || (isnan(a.score) && isnan(b.score)))
+end
 
+@inline function Base.isless(a::MatchRes, b::MatchRes)
+    a.ncompatible < b.ncompatible
+end
 
 """
     bitwise_scan(seq_head_set::SeqHeadSet, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = typemax(Int64))
@@ -26,7 +44,7 @@ The fastest scaning method. It is robust when matching tail of b.
     best_idx, best_ncompatible = _bitwise_scan_fullseq(seq_head_set.s64, bp, ptr_from, min(ptr_stop_fullseq, ptr_until), allowed_mismatch, 0, 0)
 
     if best_ncompatible >= 8 || ptr_until <= ptr_stop_fullseq
-        return (best_idx, best_ncompatible)
+        return MatchRes(best_idx, best_ncompatible)
     end
 
     ptr_from = ptr_stop_fullseq + 1
@@ -35,7 +53,7 @@ The fastest scaning method. It is robust when matching tail of b.
     best_idx, best_ncompatible = _bitwise_scan_fullseq(seq_head_set.s32, bp, ptr_from, min(ptr_stop_fullseq, ptr_until), allowed_mismatch, best_idx, best_ncompatible)
 
     if best_ncompatible >= 4 || ptr_until <= ptr_stop_fullseq
-        return (best_idx, best_ncompatible)
+        return MatchRes(best_idx, best_ncompatible)
     end
 
     ptr_from = ptr_stop_fullseq + 1
@@ -44,7 +62,7 @@ The fastest scaning method. It is robust when matching tail of b.
     best_idx, best_ncompatible = _bitwise_scan_fullseq(seq_head_set.s16, bp, ptr_from, min(ptr_stop_fullseq, ptr_until), allowed_mismatch, best_idx, best_ncompatible)
 
     if best_ncompatible >= 2 || ptr_until <= ptr_stop_fullseq
-        return (best_idx, best_ncompatible)
+        return MatchRes(best_idx, best_ncompatible)
     end
 
     ptr_from = ptr_stop_fullseq + 1
@@ -53,10 +71,10 @@ The fastest scaning method. It is robust when matching tail of b.
 
     # happens when length seq is odd, and some match found at the end of base.
     if best_idx > stop
-        return 0, 0
+        return MatchRes(0, 0)
     end
 
-    return (best_idx, best_ncompatible)
+    return MatchRes(best_idx, best_ncompatible)
 end
 
 @inline bitwise_scan(a::LongDNA{4}, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807) = bitwise_scan(SeqHeadSet(a), b, from, allowed_mismatch; until = until)
@@ -99,15 +117,23 @@ The fastest scaning method. It is robust when matching tail of b.
 
  - `until::Int64`: scan until this index of `b_rc`.
 
+ - `init_rc_dest::Bool`: whether `rc_dest` need to be computed to be the reverse complement of `b`. If false, `rc_dest` has been initialized.
+
 Note: the reverse complement process is `bitsafe!`.
 """
-@inline function bitwise_scan_rc!(rc_dest::LongDNA{4}, a, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807)
-    copy!(rc_dest, b)
-    b_rc = reverse_complement!(rc_dest)
-    best_idx_rc, best_ncompatible = bitwise_scan(a, b_rc, from, allowed_mismatch; until = until)
-    best_idx_rc == 0 && return 0,0
-    best_idx = length(b) - best_idx_rc + 1
-    best_idx, best_ncompatible
+@inline function bitwise_scan_rc!(rc_dest::LongDNA{4}, a, b::LongDNA{4}, from::Int64, allowed_mismatch::Int64; until::Int64 = 9223372036854775807, init_rc_dest::Bool = true)
+    if init_rc_dest
+        copy!(rc_dest, b)
+        reverse_complement!(rc_dest)
+    end
+    match_res = bitwise_scan(a, rc_dest, from, allowed_mismatch; until = until)
+
+    if match_res.idx == 0
+        match_res.ncompatible = 0
+        return match_res
+    end
+    match_res.idx = length(b) - match_res.idx + 1  # idx compute from rc_dest to b
+    match_res
 end
 
 """
@@ -197,6 +223,6 @@ for T in (UInt8, UInt16, UInt32, UInt64)
         ptr_from += 1
     end
 
-    return (best_idx, best_ncompatible)
+    return MatchRes(best_idx, best_ncompatible)
 end
 end

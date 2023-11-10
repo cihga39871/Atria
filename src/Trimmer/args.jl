@@ -3,7 +3,36 @@ function parsing_args(args::Vector; exit_after_help = true)
         prog = "atria",
         description = "Atria $atria_version",
         version = atria_version, add_version = true, exit_after_help = exit_after_help,
-        epilog = """Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31\n"""
+        preformatted_epilog = true,
+        epilog = """
+        ----------
+
+        Process names for --order | -O:
+            DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+            CheckIdentifier ,
+            PolyX           = [PolyG, PolyT, PolyA, PolyC],
+            PolyG           ,
+            PolyT           ,
+            PolyA           ,
+            PolyC           ,
+            AdapterTrim     ,
+            HardClip3End    = [HardClip3EndR1, HardClip3EndR2],
+            HardClip3EndR1  ,
+            HardClip3EndR2  ,
+            HardClip5End    = [HardClip5EndR1, HardClip5EndR2],
+            HardClip5EndR1  ,
+            HardClip5EndR2  ,
+            QualityTrim     ,
+            TailNTrim       ,
+            MaxNFilter      ,
+            LengthFilter    ,
+            ComplexityFilter.
+
+        ----------
+
+        Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021 https://doi.org/10.46471/gigabyte.31
+        
+        """
     )
     @add_arg_table! settings begin
         "--threads", "-t"
@@ -47,6 +76,14 @@ function parsing_args(args::Vector; exit_after_help = true)
             action = :store_true
     end
 
+    add_arg_group!(settings, "processing order")
+    @add_arg_table! settings begin
+        "--order", "-O"
+            help = "order of trimming and filtration processing methods. Unlisted process will not be done. See epilog for process names"
+            metavar = "PROCESS"
+            default = String["DefaultOrder"]
+    end
+
     add_arg_group!(settings, "poly X tail trimming")
     @add_arg_table! settings begin
         "--polyG"
@@ -72,19 +109,21 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "adapter trimming (after polyX trimming)")
+    add_arg_group!(settings, "adapter trimming")
     @add_arg_table! settings begin
         "--no-adapter-trim"
             help = "disable adapter and pair-end trimming"
             action = :store_true
         "--adapter1", "-a"
-            help = "read 1 adapter"
+            help = "read 1 adapter(s) appended to insert DNA at 3' end"
+            nargs = '+'
             metavar = "SEQ"
-            default = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
+            default = String["AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"]
         "--adapter2", "-A"
-            help = "read 2 adapter"
+            help = "read 2 adapter(s) appended to insert DNA at 3' end"
+            nargs = '+'
             metavar = "SEQ"
-            default = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
+            default = String["AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"]
         "--kmer-tolerance", "-T"
             help = "# of mismatch allowed in 16-mers adapter and pair-end matching"
             default = 2
@@ -100,11 +139,6 @@ function parsing_args(args::Vector; exit_after_help = true)
             default = 0 #1
             metavar = "INT"
             arg_type = Int64
-        # "--r1-r2-score-diff", "-s"
-        #     help = "if the score [0-16] difference between the 16-mers of r1 and r2 is greater than FLOAT, the insert size of the low-score read will be adapted to the high-score read"
-        #     default = 3.0
-        #     metavar = "FLOAT"
-        #     arg_type = Float64
         "--kmer-n-match", "-s"
             help = "(FOR PAIRED END) if n base matched [0-16] is less than INT, loosen matches will be made based on the match with the highest n base match"
             default = 9
@@ -157,21 +191,49 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Float64
     end
 
-    add_arg_group!(settings, "hard clipping: trim a fixed length (after adapter trimming)")
+    # add_arg_group!(settings, "primer trimming (PRIMER)")
+    # @add_arg_table! settings begin
+    #     "--primer1", "-m"
+    #         help = "Primers(s) at 5' end of read 1, and their reverse complement appended to 3' end of read 2"
+    #         nargs = '+'
+    #         metavar = "SEQ"
+    #         default = String[]
+    #     "--primer2", "-M"
+    #         help = "Primers(s) at 5' end of read 2, and their reverse complement appended to 3' end of read 1"
+    #         nargs = '+'
+    #         metavar = "SEQ"
+    #         default = String[]
+    #     "--primers", "-P"
+    #         help = "Primer table file. Each line is a primer set. Columns are primer1, primer2, primer name and delimited by TAB. Lines starts with `#` are ignored."
+    #         metavar = "FILE"
+    #         default = ""
+    # end
+
+    add_arg_group!(settings, "hard clipping: trim a fixed length")
     @add_arg_table! settings begin
-        "--clip-after", "-C"
-            help = "hard clip the 3' tails to contain only INT bases. 0 to disable."
+        "--clip-after-r1", "-b"
+            help = "hard clip the 3' tails of R1 to contain only INT bases. 0 to disable."
             default = 0
             metavar = "INT"
             arg_type = Int64
-        "--clip5", "-c"
-            help = "remove the first INT bases from 5' end."
+        "--clip-after-r2", "-B"
+            help = "hard clip the 3' tails of R2 to contain only INT bases. 0 to disable."
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip5-r1", "-e"
+            help = "remove the first INT bases from 5' front of R1."
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip5-r2", "-E"
+            help = "remove the first INT bases from 5' front of R2."
             default = 0
             metavar = "INT"
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "quality trimming: trim the tail when the average quality of bases in\na sliding window is low (after hard clipping)")
+    add_arg_group!(settings, "quality trimming: trim the tail when the average quality of bases in\na sliding window is low")
     @add_arg_table! settings begin
         "--no-quality-trim"
             help = "skip quality trimming"
@@ -193,7 +255,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = String
     end
 
-    add_arg_group!(settings, "N trimming (after quality trimming)")
+    add_arg_group!(settings, "N trimming")
     @add_arg_table! settings begin
         "--no-tail-n-trim"
             help = "disable removing NNNNN tail."
@@ -205,7 +267,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = Int64
     end
 
-    add_arg_group!(settings, "length filtration (after N trimming)")
+    add_arg_group!(settings, "length filtration")
     @add_arg_table! settings begin
         "--no-length-filtration"
             help = "disable length filtration"
@@ -217,7 +279,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             arg_type = String
     end
 
-    add_arg_group!(settings, "read complexity filtration (after length filtration)")
+    add_arg_group!(settings, "complexity filtration")
     @add_arg_table! settings begin
         "--enable-complexity-filtration"
             help = "enable complexity filtration"
@@ -232,16 +294,43 @@ function parsing_args(args::Vector; exit_after_help = true)
     add_arg_group!(settings, "legacy arguments")
     @add_arg_table! settings begin
         "--procs", "-p"
-        help = "ignored (multi-proc is disabled)"
-        metavar = "INT"
-        default = "1"
-        arg_type = String
+            help = "ignored (multi-proc is disabled)"
+            metavar = "INT"
+            default = "1"
+            arg_type = String
+        "--clip-after", "-C"
+            help = "removed (use --clip-after-r1 and --clip-after-r2 instead)"
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip5", "-c"
+            help = "removed (use --clip5-r1 and --clip5-r2 instead)"
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
     end
+
     return parse_args(args, settings)
 end
 
 function isdna(x::String)
-    all(map(d -> uppercase(d) in ['A', 'G', 'C', 'T', 'N'], collect(x)))
+    try
+        foreach(x -> convert(DNA, x), collect(x))
+        true
+    catch
+        false
+    end
+end
+
+function isdna(xs::Vector)
+    for x in xs
+        if isdna(x)
+            continue
+        else
+            return false
+        end
+    end
+    true
 end
 
 function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
@@ -325,12 +414,16 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     end
 
     # adapter triming
+    if length(args["read2"]) != 0 && length(args["adapter1"]) != length(args["adapter2"])
+        @error "--adapter1 -a SEQ... and --adapter2 -A SEQ...: length of adapter 1 and adapter 2 should be the same. If the same sequence is used in adapter 1 and 2, you need to explicitly specify the sequence to both adapter 1 and 2." ADAPTER1=args["adapter1"] ADAPTER2=args["adapter2"] _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
     if !isdna(args["adapter1"])
-        @error "--adapter1 -a SEQ contains invalid bases (not ACGTN)" SEQ=args["adapter1"] _module=nothing _group=nothing _id=nothing _file=nothing
+        @error "--adapter1 -a SEQ... contain(s) invalid bases" SEQ=args["adapter1"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
     if !isdna(args["adapter2"])
-        @error "--adapter2 -A SEQ contains invalid bases (not ACGTN)" SEQ=args["adapter2"] _module=nothing _group=nothing _id=nothing _file=nothing
+        @error "--adapter2 -A SEQ... contain(s) invalid bases" SEQ=args["adapter2"] _module=nothing _group=nothing _id=nothing _file=nothing
         ispass = false
     end
 
@@ -386,11 +479,27 @@ function args_range_test(args::Dict{String,Any}; test_only::Bool=false)
     end
 
     # hard clip
-    if 0 < args["clip-after"] < 30
-        @warn "--clip-after -C INT is very small. Did you mis-understand this option? It does not clip INT bases from 3' end, but only keep the first INT bases of each read. For example, if you want to clip 5 bases from 3' end, and your read length is 101, you should use `--clip-after 96` or `-C 96`." INT=args["clip-after"] _module=nothing _group=nothing _id=nothing _file=nothing
+    if args["clip-after"] != 0
+        @error "--clip-after -C is removed. Please use --clip-after-r1 and --clip-after-r2 instead" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
     end
-    if args["clip5"] > 70
-        @warn "--clip5 -c INT is very large. Did you mis-understand this option? It does not keep the last INT bases of each read, but clip the first INT bases from 5' end." INT=args["clip5"] _module=nothing _group=nothing _id=nothing _file=nothing
+    if args["clip5"] != 0
+        @error "--clip5 -c is removed. Please use --clip5-r1 and --clip5-r2 instead" _module=nothing _group=nothing _id=nothing _file=nothing
+        ispass = false
+    end
+
+    if 0 < args["clip-after-r1"] < 30
+        @warn "--clip-after-r1 -b INT is very small. Did you mis-understand this option? It does not clip INT bases from 3' end, but only keep the first INT bases of each read. For example, if you want to clip 5 bases from 3' end, and your read length is 101, you should use `--clip-after-r1 96` or `-b 96`." INT=args["clip-after-r1"] _module=nothing _group=nothing _id=nothing _file=nothing
+    end
+    if 0 < args["clip-after-r2"] < 30
+        @warn "--clip-after-r2 -B INT is very small. Did you mis-understand this option? It does not clip INT bases from 3' end, but only keep the first INT bases of each read. For example, if you want to clip 5 bases from 3' end, and your read length is 101, you should use `--clip-after-r2 96` or `-B 96`." INT=args["clip-after-r2"] _module=nothing _group=nothing _id=nothing _file=nothing
+    end
+
+    if args["clip5-r1"] > 70
+        @warn "--clip5-r1 -e INT is very large. Did you mis-understand this option? It does not keep the last INT bases of each read, but clip the first INT bases from 5' end." INT=args["clip5-r1"] _module=nothing _group=nothing _id=nothing _file=nothing
+    end
+    if args["clip5-r2"] > 70
+        @warn "--clip5-r2 -E INT is very large. Did you mis-understand this option? It does not keep the last INT bases of each read, but clip the first INT bases from 5' end." INT=args["clip5-r1"] _module=nothing _group=nothing _id=nothing _file=nothing
     end
 
     # quality trimming

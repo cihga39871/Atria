@@ -17,20 +17,22 @@ module Atria
 # using Markdown
 # using PrettyTables
 
+using Reexport
+
 include(joinpath("BioBits", "BioBits.jl"))
-using .BioBits
+@reexport using .BioBits
 
 include(joinpath("FqRecords", "FqRecords.jl"))
-using .FqRecords
+@reexport using .FqRecords
 
 include(joinpath("Trimmer", "Trimmer.jl"))
-using .Trimmer
+@reexport using .Trimmer
 
 include(joinpath("Benchmark", "Benchmark.jl"))
-using .Benchmark
+@reexport using .Benchmark
 
 include(joinpath("AtriaTest", "AtriaTest.jl"))
-using .AtriaTest
+@reexport using .AtriaTest
 
 
 function julia_main()::Cint
@@ -53,12 +55,16 @@ function julia_main()::Cint
             println(help_programs)
         elseif ARGS[1] in ("atria", "Atria")
             if "--detect-adapter" in ARGS
-                julia_wrapper_detect_adapter(ARGS[2:end])
+                if "-R" in ARGS || "--read2" in ARGS
+                    julia_wrapper_detect_adapter_pe(ARGS[2:end])
+                else
+                    julia_wrapper_detect_adapter_se(ARGS[2:end])
+                end
             elseif "-R" in ARGS || "--read2" in ARGS
                 # paired-end
-                julia_wrapper_atria(ARGS[2:end]::Vector{String})
+                julia_wrapper_atria_pe(ARGS[2:end]::Vector{String})
             else
-                julia_wrapper_atria_single_end(ARGS[2:end]::Vector{String})
+                julia_wrapper_atria_se(ARGS[2:end]::Vector{String})
             end
         elseif ARGS[1] == "simulate"
             julia_wrapper_simulate(ARGS[2:end]::Vector{String})
@@ -72,12 +78,16 @@ function julia_main()::Cint
             test_atria()
         else
             if "--detect-adapter" in ARGS
-                julia_wrapper_detect_adapter(ARGS)
+                if "-R" in ARGS || "--read2" in ARGS
+                    julia_wrapper_detect_adapter_pe(ARGS)
+                else
+                    julia_wrapper_detect_adapter_se(ARGS)
+                end
             elseif "-R" in ARGS || "--read2" in ARGS
                 # paired-end
-                julia_wrapper_atria(ARGS::Vector{String})
+                julia_wrapper_atria_pe(ARGS::Vector{String})
             else
-                julia_wrapper_atria_single_end(ARGS::Vector{String})
+                julia_wrapper_atria_se(ARGS::Vector{String})
             end
         end
     else

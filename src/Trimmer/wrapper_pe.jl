@@ -1,7 +1,7 @@
 
 # f_procs(x::String) = x == "-p" || x == "--procs"
 
-function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
+function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     time_program_initializing = time()
 
@@ -15,70 +15,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     nthread = args["threads"]
     outdir = args["output-dir"]
 
-    #================== Parallel control (masked after v3.1.4) ====================
-    --procs 4onlyrun2 is a hidden feature for parallel computing...
-    onlyrun2 means only run the second read pair fastqs.
-    MECHANISM:
-    when -p | --procs is specified, Atria will launch additional worker processes.
-    the controller process (main process) will only manage worker processes,
-    and will not run samples.
-    the new workers will run additional Atria with a modified ARGS: -p XonlyrunN
-    onlyrunN refresh `file_range` to N:N,
-    so one worker will only run one sample each time. =#
-
     nfile = length(args["read1"])
     file_range = 1:nfile
-
-    # index_procs = findfirst(f_procs, ARGS)
-    # if index_procs != nothing  # argument --procs is specified
-    #     nparallel = tryparse(Int64, args["procs"])
-    #     if isnothing(nparallel)  # --procs might be 4onlyrun2
-    #         if occursin(r"\d+onlyrun\d+", args["procs"])
-    #             _filenum = parse(Int64, match(r"\d+onlyrun(\d+)$", args["procs"]).captures[1])
-    #             file_range = _filenum:_filenum
-    #         else
-    #             @error "--procs INT must be positive integer" _module=:. _group=:. _id=:. _file="."
-    #             exit(3)
-    #         end
-    #     else
-    #         # start run this code as parallel.
-    #         addprocs(nparallel)
-    #         julia_command = Base.julia_cmd()
-
-    #         function sub_procs(filenum::Int64, r1_filename::String, r2_filename::String, nfile::Int64, julia_command::Cmd)
-    #             println("Atria: ($filenum/$nfile) $r1_filename $r2_filename")
-    #             new_args = ARGS[1:end]
-    #             # presumption: --procs is specified in ARGS
-    #             new_args[index_procs+1] = new_args[index_procs+1] * "onlyrun$filenum"
-
-    #             logs = joinpath(outdir, replace(basename(r1_filename), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.stdlog", count=1))
-    #             try
-    #                 run(pipeline(`$julia_command -t $nthread -e 'Atria = Base.loaded_modules[Base.PkgId(Base.UUID("226cbef3-b485-431c-85c2-d8bd8da14025"), "Atria")]; Atria.julia_main()' -- $new_args`, stdout=logs, stderr=logs))
-    #             catch e
-    #                 rethrow(e)
-    #             end
-
-    #             return 0
-    #         end
-    #         ARGS_backup = deepcopy(ARGS) # cannot assign ARGS to Base.ARGS from module Main
-    #         @eval @everywhere empty!(ARGS)
-    #         @eval @everywhere append!(ARGS, $ARGS_backup)
-    #         @eval @everywhere nthread = $nthread
-    #         @eval @everywhere sub_procs = $sub_procs
-    #         @eval @everywhere outdir = $outdir
-    #         @info "Parallel mode: logs saved to $outdir/*.atria.stdlog"
-    #         pmap(sub_procs,
-    #             file_range,
-    #             args["read1"],
-    #             args["read2"],
-    #             repeat(Int64[nfile], nfile),
-    #             repeat(Cmd[julia_command], nfile)
-    #         )
-    #         file_range = 1:0  # no file will be processed in the main thread.
-    #         return 0  # do not run Atria in the main thread. end of julia_wrapper_atria()
-    #     end
-    # end
-
 
     #================== Arguments ====================#
 
@@ -91,26 +29,23 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     # N
     max_N                    = args["max-n"                  ]
     # adapter
-    adapter1                 = LongDNA{4}(args["adapter1"]) |> bitsafe!
-    adapter2                 = LongDNA{4}(args["adapter2"]) |> bitsafe!
-    adapter1_seqheadset      = SeqHeadSet(adapter1)
-    adapter2_seqheadset      = SeqHeadSet(adapter2)
-    # NOTE: TruncSeq has some unknown accuracy problems.
-    kmer_tolerance           = args["kmer-tolerance"          ]
-    kmer_tolerance_consensus = args["kmer-tolerance-consensus"]
-    pe_adapter_diff          = args["pe-adapter-diff"         ]
-    r1_r2_diff               = args["r1-r2-diff"              ]
-    kmer_n_match             = args["kmer-n-match"            ]
-    trim_score               = args["trim-score-pe"           ]
-    trim_score_se            = args["trim-score-se"           ]
-    tail_length              = args["tail-length"             ]
-    # consensus
-    overlap_score      = args["overlap-score"     ]
-    min_ratio_mismatch = args["min-ratio-mismatch"]
-    prob_diff          = args["prob-diff"         ]
+    adapter1s                 = LongDNA{4}.(args["adapter1"])
+    adapter2s                 = LongDNA{4}.(args["adapter2"])
+    adapter1_seqheadsets      = SeqHeadSet.(adapter1s)
+    adapter2_seqheadsets      = SeqHeadSet.(adapter2s)
+    # first adapter
+    adapter1                 = adapter1s[1]
+    adapter2                 = adapter2s[1]
+    adapter1_seqheadset      = adapter1_seqheadsets[1]
+    adapter2_seqheadset      = adapter2_seqheadsets[1]
+    # adapter and primer match options
+    op                        = PEOptions(args)
+
     # hard clip
-    nclip_after        = args["clip-after"]
-    nclip_front        = args["clip5"     ]
+    nclip_after_r1        = args["clip-after-r1"]
+    nclip_after_r2        = args["clip-after-r2"]
+    nclip_front_r1        = args["clip5-r1"     ]
+    nclip_front_r2        = args["clip5-r2"     ]
     # quality
     quality_offset     = Trimmer.get_quality_offset(args["quality-format"])
     quality_kmer       = args["quality-kmer"]
@@ -129,14 +64,16 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     do_polyC                 =  args["polyC"               ]
     do_length_filtration     = !args["no-length-filtration"]
     do_adapter_trimming      = !args["no-adapter-trim"     ]
-    do_consensus_calling     =  do_adapter_trimming && !args["no-consensus"]
-    do_hard_clip_3_end       =  nclip_after > 0
-    do_hard_clip_5_end       =  nclip_front > 0
+    do_consensus_calling     = !args["no-consensus"]
+    do_hard_clip_3_end_r1    =  nclip_after_r1 > 0
+    do_hard_clip_3_end_r2    =  nclip_after_r2 > 0
+    do_hard_clip_5_end_r1    =  nclip_front_r1 > 0
+    do_hard_clip_5_end_r2    =  nclip_front_r2 > 0
     do_quality_trimming      = !args["no-quality-trim"     ]
     do_tail_n_trimming       = !args["no-tail-n-trim"      ]
     do_tail_low_qual_trimming=  do_polyG || do_polyT || do_polyA || do_polyC || do_adapter_trimming
     do_max_n_filtration      =  max_N > 0
-    do_read_stats            =  args["stats"                       ]
+    # do_read_stats            =  args["stats"                       ]
     do_complexity_filtration =  args["enable-complexity-filtration"]
 
     mkpath(outdir)
@@ -217,14 +154,18 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
 
     #======= Hard clips =======#
-    HardClip3End = do_hard_clip_3_end ? quote
-        tail_trim!(r1::FqRecord, $nclip_after)
-        tail_trim!(r2::FqRecord, $nclip_after)
+    HardClip3EndR1 = do_hard_clip_3_end_r1 ? quote
+        tail_trim!(r1::FqRecord, $nclip_after_r1)
+    end : nothing
+    HardClip3EndR2 = do_hard_clip_3_end_r2 ? quote
+        tail_trim!(r2::FqRecord, $nclip_after_r2)
     end : nothing
 
-    HardClip5End = do_hard_clip_5_end ? quote
-        front_trim!(r1::FqRecord, $nclip_front::Int64)
-        front_trim!(r2::FqRecord, $nclip_front::Int64)
+    HardClip5EndR1 = do_hard_clip_5_end_r1 ? quote
+        front_trim!(r1::FqRecord, $nclip_front_r1::Int64)
+    end : nothing
+    HardClip5EndR2 = do_hard_clip_5_end_r2 ? quote
+        front_trim!(r2::FqRecord, $nclip_front_r2::Int64)
     end : nothing
 
 
@@ -272,7 +213,71 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
 
 
     #======= adapter trimming =======#
-    AdapterTrim = do_adapter_trimming ? quote
+    AdapterTrim = if do_adapter_trimming
+        if length(adapter1_seqheadsets) > 1
+            quote
+                r1_seq_rc = $r1_seq_rc_threads[thread_id]
+                r2_seq_rc = $r2_seq_rc_threads[thread_id]
+                adapter_match_and_trim_pe!(
+                    $adapter1_seqheadsets, $adapter2_seqheadsets,
+                    $adapter1s, $adapter2s, r1, r2,
+                    true, r1_seq_rc, r2_seq_rc, $op
+                )
+            end
+        else
+            quote
+                r1_seq_rc = $r1_seq_rc_threads[thread_id]
+                r2_seq_rc = $r2_seq_rc_threads[thread_id]
+                adapter_match_and_trim_pe!(
+                    $adapter1_seqheadset, $adapter2_seqheadset,
+                    $adapter1, $adapter2, r1, r2,
+                    r1_seq_rc, r2_seq_rc, $op
+                )
+            end
+        end
+    else
+        nothing
+    end
+
+
+    ReadProcess = quote end
+    steps = OrderedDict{String, Vector{Union{Nothing,Expr}}}(
+        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+        "CheckIdentifier" => [CheckIdentifier],
+        "PolyX" => [PolyG, PolyT, PolyA, PolyC],
+        "PolyG" => [PolyG],
+        "PolyT" => [PolyT],
+        "PolyA" => [PolyA],
+        "PolyC" => [PolyC],
+        "AdapterTrim" => [AdapterTrim],
+        "HardClip3End" => [HardClip3EndR1, HardClip3EndR2],
+        "HardClip3EndR1" => [HardClip3EndR1],
+        "HardClip3EndR2" => [HardClip3EndR2],
+        "HardClip5End" => [HardClip5EndR1, HardClip5EndR2],
+        "HardClip5EndR1" => [HardClip5EndR1],
+        "HardClip5EndR2" => [HardClip5EndR2],
+        "QualityTrim" => [QualityTrim],
+        "TailNTrim" => [TailNTrim],
+        "MaxNFilter" => [MaxNFilter],
+        "LengthFilter" => [LengthFilter],
+        "ComplexityFilter" => [ComplexityFilter]
+    )
+
+    for step in args["order"]
+        step_exprs = get(steps, step, step)
+        if step_exprs isa AbstractString
+            name_list = join(collect(keys(steps)), ", ")
+            error("Invalid process name in -O or --order: $step. Possible names are $name_list.")
+        end
+        for step_expr in step_exprs
+            if isnothing(step_expr)
+                continue
+            end
+            append!(ReadProcess.args, step_expr.args)
+        end
+    end
+    
+    #=AdapterTrim = do_adapter_trimming ? quote
         # rx_seq_rc is not initialized by this rx
         r1_seq_rc = $r1_seq_rc_threads[thread_id]
         r2_seq_rc = $r2_seq_rc_threads[thread_id]
@@ -285,8 +290,8 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         extra_tolerance = max(r1_adapter_nmatch, r2_adapter_nmatch) < $kmer_n_match
 
         # rx_seq_rc is replaced with reverse complement of rx.seq
-        r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc!(r1_seq_rc, r2_seqheadset, r1.seq, 1, $kmer_tolerance + extra_tolerance)
-        r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc!(r2_seq_rc, r1_seqheadset, r2.seq, 1, $kmer_tolerance + extra_tolerance)
+        r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc!(r1_seq_rc, r2_seqheadset, r1.seq, 1, $kmer_tolerance + extra_tolerance, init_rc_dest = true)
+        r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc!(r2_seq_rc, r1_seqheadset, r2.seq, 1, $kmer_tolerance + extra_tolerance, init_rc_dest = true)
 
         # if one hit, then check other matches with loosen kmer tomerance
         max_nmatch = max(r1_adapter_nmatch, r2_adapter_nmatch, r1_pe_nmatch, r2_pe_nmatch)
@@ -395,8 +400,6 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                         is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
                     end
                 end
-                # r1_insert_size_decision >= 0 && tail_trim!(r1::FqRecord, r1_insert_size_decision)
-                # r2_insert_size_decision >= 0 && tail_trim!(r2::FqRecord, r2_insert_size_decision)
 
                 # v3.0.0-dev: If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
                 r1_nremain = if r1_insert_size_decision >= 1
@@ -435,55 +438,22 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             append!(r2.des, adapter_trimming_stat)
         end
     end : nothing
+    =#
 
-
-
-    # @eval function read_processing!(r1::FqRecord, r2::FqRecord, thread_id::Int)::Bool
-    #     $CheckIdentifier
-    #     $PolyG
-    #     $PolyT
-    #     $PolyA
-    #     $PolyC
-    #     $LengthFilter
-    #     $AdapterTrim
-    #     $HardClip3End
-    #     $HardClip5End
-    #     $QualityTrim
-    #     $TailNTrim
-    #     $MaxNFilter
-    #     $LengthFilter
-    #     $ComplexityFilter
-    #     true
-    # end
-    # moved from thread_trim.jl to fix world age error.
-   
     @eval function processing_reads_threads!(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
-        if length(isgoods) < n_reads
+        if length(isgoods) != n_reads
             resize!(isgoods, n_reads)
         end
         # split reads to N reads per batch
-        Threads.@threads :static for reads_start in 1:256:n_reads
-            reads_end = min(reads_start + 255, n_reads)
+        Threads.@threads :static for reads_start in 1:1024:n_reads
+            reads_end = min(reads_start + 1023, n_reads)
             reads_range = reads_start:reads_end
             thread_id = Threads.threadid()
             for i in reads_range
                 r1 = r1s[i]
                 r2 = r2s[i]
                 is_good = true
-                $CheckIdentifier
-                $PolyG
-                $PolyT
-                $PolyA
-                $PolyC
-                $LengthFilter
-                $AdapterTrim
-                $HardClip3End
-                $HardClip5End
-                $QualityTrim
-                $TailNTrim
-                $MaxNFilter
-                $LengthFilter
-                $ComplexityFilter
+                $ReadProcess
                 @label stop_read_processing
                 @inbounds isgoods[i] = is_good
             end
@@ -495,19 +465,18 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
     in2bytes = Vector{UInt8}(undef, max_chunk_size)
 
     # number of jobs to boxing FqRecord from UInt8 Vector
-    njobs = nthread * 10
+    njobs = nthread * 6 - 1
     vr1s = ntuple(_ -> Vector{FqRecord}(), njobs)
     vr2s = ntuple(_ -> Vector{FqRecord}(), njobs)
 
     r1s = Vector{FqRecord}()
     r2s = Vector{FqRecord}()
 
-    isgoods = Vector{Bool}()
+    isgoods_odd = Vector{Bool}()
+    isgoods_even = Vector{Bool}()
 
     outr1s = Vector{Vector{UInt8}}()
     outr2s = Vector{Vector{UInt8}}()
-
-
 
     time_program_initializing = time() - time_program_initializing
 
@@ -596,8 +565,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         @info("ATRIA TRIMMERS AND FILTERS",
             adapter_trimming = do_adapter_trimming,
             consensus_calling = do_consensus_calling,
-            hard_clip_3_end = do_hard_clip_3_end,
-            hard_clip_5_end = do_hard_clip_5_end,
+            hard_clip_3_end_r1 = do_hard_clip_3_end_r1,
+            hard_clip_3_end_r2 = do_hard_clip_3_end_r2,
+            hard_clip_5_end_r1 = do_hard_clip_5_end_r1,
+            hard_clip_5_end_r2 = do_hard_clip_5_end_r2,
             quality_trimming = do_quality_trimming,
             tail_N_trimming = do_tail_n_trimming,
             max_N_filtering = do_max_n_filtration,
@@ -610,8 +581,10 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             @info("ATRIA TRIMMERS AND FILTERS",
                 adapter_trimming = do_adapter_trimming,
                 consensus_calling = do_consensus_calling,
-                hard_clip_3_end = do_hard_clip_3_end,
-                hard_clip_5_end = do_hard_clip_5_end,
+                hard_clip_3_end_r1 = do_hard_clip_3_end_r1,
+                hard_clip_3_end_r2 = do_hard_clip_3_end_r2,
+                hard_clip_5_end_r1 = do_hard_clip_5_end_r1,
+                hard_clip_5_end_r2 = do_hard_clip_5_end_r2,
                 quality_trimming = do_quality_trimming,
                 tail_N_trimming = do_tail_n_trimming,
                 max_N_filtering = do_max_n_filtration,
@@ -655,7 +628,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
         time_read_processing = time()
 
         # the first cycle to generate compiled code?
-        function cycle_wrapper(task_write1, task_write2)
+        function cycle_wrapper(task_r1s_unbox, task_r2s_unbox, task_write1, task_write2)
             nbatch += 1
             n_r1_before = length(r1s) - n_reads
             n_r2_before = length(r2s) - n_reads
@@ -663,7 +636,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             if typeof(io1) <: IOStream  # not compressed
                 length(in1bytes) == chunk_size1 || resize!(in1bytes, chunk_size1)
                 length(in2bytes) == chunk_size2 || resize!(in2bytes, chunk_size2)
-                (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
+                (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s, task_r1s_unbox, task_r2s_unbox; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
                 total_n_bytes_read2 += length(in2bytes)  # will read INT in this batch
@@ -672,7 +645,7 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
                 (n_r1, n_r2, r1s, r2s, in1bytes_nremain, in2bytes_nremain, ncopied) = load_fqs_threads!(
                     io1, io2,
                     in1bytes, in2bytes, in1bytes_nremain, in2bytes_nremain,
-                    vr1s, vr2s, r1s, r2s;
+                    vr1s, vr2s, r1s, r2s, task_r1s_unbox, task_r2s_unbox;
                     will_eof1 = will_eof1, will_eof2 = will_eof2,
                     in1bytes_resize_before_read = chunk_size1,
                     in2bytes_resize_before_read = chunk_size2,
@@ -688,16 +661,17 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             chunk_size1, chunk_size2 = adjust_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
 
             # processing reads
+            isgoods = nbatch % 2 == 0 ? isgoods_even : isgoods_odd  # write task is still using the other one! 
             Base.invokelatest(processing_reads_threads!, r1s, r2s, isgoods, n_reads)
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
 
-            task_write1, task_write2 = write_fqs_threads!(
+            task_r1s_unbox, task_r2s_unbox, task_write1, task_write2 = write_fqs_threads!(
                 io1out::IO, io2out::IO,
                 outr1s::Vector{Vector{UInt8}}, outr2s::Vector{Vector{UInt8}},
                 r1s::Vector{FqRecord}, r2s::Vector{FqRecord},
-                n_reads::Int, isgoods_in_range, task_write1, task_write2)
+                n_reads, isgoods_in_range, task_write1, task_write2)
 
             n_goods = fetch(task_sum)
             total_n_goods += n_goods
@@ -706,13 +680,21 @@ function julia_wrapper_atria(ARGS::Vector{String}; exit_after_help = true)
             # @info "Cycle $nbatch: processed $n_reads read pairs ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
 
             @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods pairs; (copied $ncopied/$total_read_copied_in_loading reads)"
-            return task_write1, task_write2
+            return task_r1s_unbox, task_r2s_unbox, task_write1, task_write2
         end
 
+        task_r1s_unbox = Threads.@spawn 1
+        task_r2s_unbox = Threads.@spawn 1
         task_write1 = Threads.@spawn 1
         task_write2 = Threads.@spawn 1
+
+        # this has Precompiling
+        if !eof(io1::IO) || !eof(io2::IO)
+            task_r1s_unbox, task_r2s_unbox, task_write1, task_write2 = cycle_wrapper(task_r1s_unbox, task_r2s_unbox, task_write1, task_write2)
+        end
+
         while !eof(io1::IO) || !eof(io2::IO)
-            task_write1, task_write2 = cycle_wrapper(task_write1, task_write2)
+            task_r1s_unbox, task_r2s_unbox, task_write1, task_write2 = cycle_wrapper(task_r1s_unbox, task_r2s_unbox, task_write1, task_write2)
         end
         
         @info "ATRIA COMPLETE" read1=outfile1 read2=outfile2

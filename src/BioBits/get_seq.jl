@@ -78,12 +78,16 @@ struct SeqHeadSet
     s16::SeqHead{UInt16}
     s8::SeqHead{UInt8}
     function SeqHeadSet(seq::LongDNA{4})
+        bitsafe!(seq)
         s64 = SeqHead{UInt64}(seq)
         s32 = SeqHead{UInt32}(seq)
         s16 = SeqHead{UInt16}(seq)
         s8 = SeqHead{UInt8}(seq)
         new(s64, s32, s16, s8)
     end
+end
+function SeqHeadSet(seq::AbstractString)
+    SeqHeadSet(LongDNA{4}(seq))
 end
 
 function BioSequences.LongDNA{4}(s::SeqHeadSet)

@@ -62,3 +62,15 @@ end
     @fastmath value/n
 end
 
+
+
+@inline function compute_prob_and_score!(match_res::MatchRes, r::FqRecord, r_start::Int, r_end::Int; min_prob::Float64 = 0.75)
+    match_res.prob = max(probmean(r, r_start, r_end), min_prob)
+    match_res.score = @fastmath match_res.ncompatible * match_res.prob
+end
+@inline function compute_prob_and_score!(match_res::MatchRes, r1::FqRecord, r1_start::Int, r1_end::Int, r2::FqRecord, r2_start::Int, r2_end::Int; min_prob::Float64 = 0.75)
+    prob1 = max(probmean(r1, r1_start, r1_end), min_prob)
+    prob2 = max(probmean(r2, r2_start, r2_end), min_prob)
+    match_res.prob = @fastmath prob1 * prob2
+    match_res.score = @fastmath match_res.ncompatible * match_res.prob
+end

@@ -34,15 +34,17 @@ seq_complexity,
 polyX_tail_scan,
 pe_consensus!
 
+using Reexport
 
-
-using Base.Threads
+@reexport using Base.Threads
 using ..BioBits
 using ..BioBits.BioSymbols
 using ..BioBits.BioSequences
 
 include("interface.jl")
 include("quality.jl")
+export compute_prob_and_score!
+
 include("copy.jl")
 include("basic_io.jl")
 include("util.jl")
@@ -52,5 +54,13 @@ include("thread_input.jl")
 include("thread_output.jl")
 
 include("check_and_trim.jl")
+
+include("adapter_match_se.jl")
+export adapter_match_se
+
+include("adapter_match_pe.jl")
+export adapter_match_and_trim_pe!,
+adapter_match_pe, 
+PEOptions, AdapterPERes 
 
 end

@@ -16,6 +16,7 @@
     insert_size, score
 end
 
+
 @inline function insert_size_decision_separate(a_insert_size::Int64, a_score::Float64, b_insert_size::Int64, b_score::Float64; insert_size_diff::Int64 = 0)
     if abs(a_insert_size - b_insert_size) <= insert_size_diff
         score = a_score + b_score

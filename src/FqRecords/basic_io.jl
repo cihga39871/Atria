@@ -11,6 +11,8 @@ Base.display(r::FqRecord) = println(stdout, r)
 Base.show(r::FqRecord) = println(stdout, r)
 
 
+remove_blank(s::AbstractString) = replace(s, r"\n[ \t]*" => "\n")
+
 """
     fqreadrecord(s::IO    ; quality_offset=33)::FqRecord
     fqreadrecord(s::String; quality_offset=33)::FqRecord
@@ -21,13 +23,13 @@ function fqreadrecord(s::IO; quality_offset=33)::FqRecord
     # 0x0a is \n
     # do not compatible with \r\n
     id = readuntil(s, 0x0a, keep=false)::Vector{UInt8}
-    seq = LongDNA{4}(readuntil(s, 0x0a, keep=false)::Vector{UInt8})::LongDNA{4}
+    seq = LongDNA{4}(readuntil(s, 0x0a, keep=false))::LongDNA{4}
     des = readuntil(s, 0x0a, keep=false)::Vector{UInt8}
     qual = readuntil(s, 0x0a, keep=false)::Vector{UInt8}
     # nqual = length(qual::Vector{UInt8})::Int64
     FqRecord(id, seq, des, qual; quality_offset=quality_offset)::FqRecord
 end
-fqreadrecord(s::String; quality_offset=33)::FqRecord = fqreadrecord(IOBuffer(s), quality_offset=quality_offset)
+fqreadrecord(s::String; quality_offset=33)::FqRecord = fqreadrecord(IOBuffer(remove_blank(s)), quality_offset=quality_offset)
 
 """
     fqreadrecord!(r::FqRecord, s::IO)

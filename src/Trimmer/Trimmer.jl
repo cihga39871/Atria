@@ -1,9 +1,10 @@
 
 module Trimmer
 
-export julia_wrapper_atria,
-julia_wrapper_atria_single_end,
-julia_wrapper_detect_adapter,
+export julia_wrapper_atria_pe,
+julia_wrapper_atria_se,
+julia_wrapper_detect_adapter_se,
+julia_wrapper_detect_adapter_pe,
 sub_procs, sub_procs_single_end,
 atria_markdown_help,
 processing_reads!,
@@ -15,21 +16,25 @@ get_quality_offset,
 get_length_range,
 f_procs
 
-using ArgParse
-using BioSymbols
-using BioSequences
-using Distributed
-using Logging
-using JSON
-using DataStructures
-using Printf
-using Markdown
-using PrettyTables
+using Reexport
 
-using ..BioBits
-using ..BioBits.BioSymbols
-using ..BioBits.BioSequences
-using ..FqRecords
+@reexport using ArgParse
+@reexport using BioSymbols
+@reexport using BioSequences
+@reexport using Distributed
+@reexport using Logging
+@reexport using JSON
+@reexport using DataStructures
+@reexport using Printf
+@reexport using Markdown
+@reexport using PrettyTables
+@reexport using DataFrames
+@reexport using CSV
+@reexport using Dates
+@reexport using Statistics
+
+@reexport using ..BioBits
+@reexport using ..FqRecords
 
 using Pkg
 const atria_version = @eval($(string("v", Pkg.project().version)))
@@ -37,9 +42,9 @@ const atria_version = @eval($(string("v", Pkg.project().version)))
 include("markdown_help.jl")
 include("args.jl")
 include("thread_trim.jl")
-include("wrapper.jl")
-include("wrapper_single_end.jl")
+include("wrapper_pe.jl")
+include("wrapper_se.jl")
 include("detect_adapter.jl")
-include("wrapper_detect_adapter.jl")
-
+include("wrapper_detect_adapter_se.jl")
+include("wrapper_detect_adapter_pe.jl")
 end

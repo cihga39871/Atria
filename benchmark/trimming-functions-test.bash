@@ -1,4 +1,11 @@
 
+time=/usr/bin/time
+ls $time 2>/dev/null
+if [[ $? > 0 ]]
+then
+    time=/export/home/CFIA-ACIA/chuanj/.local/bin/time
+fi
+
 atria-trim-arg(){
 	kmer_tolerance=$1
 	diff1=$2  # pe-adapter-diff
@@ -180,7 +187,7 @@ qualtrim_trimmomatic(){
 	local output_r2=$OUTDIR/`basename "${2/.fastq*/}"`.qual$QSCORE.fq$gzext
 	local output_r2_up=$OUTDIR/`basename "${2/.fastq*/}"`.qual$QSCORE.unpair.fq$gzext
 
-	/usr/bin/time -v java -jar /usr/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads $num_threads -phred33 $1 $2 $output_r1 $output_r1_up $output_r2 $output_r2_up SLIDINGWINDOW:5:$QSCORE MINLEN:0
+	$time -v java -jar /usr/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads $num_threads -phred33 $1 $2 $output_r1 $output_r1_up $output_r2 $output_r2_up SLIDINGWINDOW:5:$QSCORE MINLEN:0
 }
 
 

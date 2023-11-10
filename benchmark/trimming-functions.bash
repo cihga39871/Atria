@@ -1,12 +1,19 @@
 #!bash
 export JULIA_NUM_THREADS=16
 
+time=/usr/bin/time
+ls $time 2>/dev/null
+if [[ $? > 0 ]]
+then
+    time=/export/home/CFIA-ACIA/chuanj/.local/bin/time
+fi
+
 run_atria(){
     local num_threads=1
     if [[ $1 ]]; then
         num_threads=$1
     fi
-    /usr/bin/time -v atria --no-consensus \
+    $time -v atria --no-consensus \
         -r $r1 -R $r2 \
         -o Atria \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
@@ -18,7 +25,7 @@ run_atria_consensus(){
     if [[ $1 ]]; then
         num_threads=$1
     fi
-    /usr/bin/time -v atria \
+    $time -v atria \
         -r $r1 -R $r2 \
         -o Atria-consensus \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
@@ -34,12 +41,12 @@ run_adapterremoval() {
     local folder="AdapterRemoval-$err"
 	mkdir -p "$folder"
 	if [[ $r1 = *gz ]]; then
-		/usr/bin/time -v AdapterRemoval --file1 $r1 --file2 $r2 \
+		$time -v AdapterRemoval --file1 $r1 --file2 $r2 \
 	        --basename "$folder"/adapterremoval \
 	        --adapter1 $a1 --adapter2 $a2 \
 	        --mm $err --minlength 0 --threads $num_threads --gzip
 	else
-		/usr/bin/time -v AdapterRemoval --file1 $r1 --file2 $r2 \
+		$time -v AdapterRemoval --file1 $r1 --file2 $r2 \
 			--basename "$folder"/adapterremoval \
 			--adapter1 $a1 --adapter2 $a2 \
 			--mm $err --minlength 0 --threads $num_threads
@@ -54,11 +61,11 @@ run_skewer(){
     local OUTDIR="Skewer"
     mkdir -p $OUTDIR
 	if [[ $r1 = *gz ]]; then
-	    /usr/bin/time -v skewer --quiet \
+	    $time -v skewer --quiet \
 	        -x $a1 -y $a2 -m pe  \
 	        -l 0 -o $OUTDIR/$OUTDIR $r1 $r2 --threads $num_threads --compress
 	else
-		/usr/bin/time -v skewer --quiet \
+		$time -v skewer --quiet \
 	        -x $a1 -y $a2 -m pe  \
 	        -l 0 -o $OUTDIR/$OUTDIR $r1 $r2 --threads $num_threads
 	fi
@@ -71,7 +78,7 @@ run_trim_galore(){
     fi
     local OUTDIR="TrimGalore"
 	mkdir -p $OUTDIR
-	/usr/bin/time -v trim_galore --cores $num_threads \
+	$time -v trim_galore --cores $num_threads \
 	    --quality 0 \
 	    -o $OUTDIR \
 	    --adapter $a1 \
@@ -100,7 +107,7 @@ run_trimmomatic(){
 		local isgz=
 	fi
 
-	/usr/bin/time -v java -jar /usr/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads $num_threads -phred33 $r1 $r2 $output-pair1.paired.fq$isgz $output-pair1.unpaired.fq$isgz $output-pair2.paired.fq$isgz $output-pair2.unpaired.fq$isgz ILLUMINACLIP:adapters.fa:2:30:10:1:TRUE:keepBothReads MINLEN:1
+	$time -v java -jar /usr/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads $num_threads -phred33 $r1 $r2 $output-pair1.paired.fq$isgz $output-pair1.unpaired.fq$isgz $output-pair2.paired.fq$isgz $output-pair2.unpaired.fq$isgz ILLUMINACLIP:adapters.fa:2:30:10:1:TRUE:keepBothReads MINLEN:1
 }
 
 run_ktrim(){
@@ -110,7 +117,7 @@ run_ktrim(){
 	fi
 	local OUTDIR="Ktrim"
 	mkdir -p $OUTDIR
-	/usr/bin/time -v ktrim -1 $r1 -2 $r2 -t $num_threads -p 33 -q 1 -s 10 -a $a1 -b $a2 -o Ktrim/ktrim
+	$time -v ktrim -1 $r1 -2 $r2 -t $num_threads -p 33 -q 1 -s 10 -a $a1 -b $a2 -o Ktrim/ktrim
 }
 
 run_fastp(){
@@ -126,7 +133,7 @@ run_fastp(){
 		local isgz=
 	fi
 	mkdir -p $OUTDIR
-	/usr/bin/time -v fastp --in1 $r1 --in2 $r2 --out1 $output.r1.fq$isgz --out2 $output.r2.fq$isgz \
+	$time -v fastp --in1 $r1 --in2 $r2 --out1 $output.r1.fq$isgz --out2 $output.r2.fq$isgz \
 		-z 6 --adapter_sequence $a1 --adapter_sequence_r2 $a2 --disable_trim_poly_g --disable_quality_filtering --disable_length_filtering --thread $num_threads
 }
 
@@ -138,7 +145,7 @@ run_seqpurge() {
     local folder=SeqPurge
     mkdir -p "$folder"
 	# output always gziped
-    /usr/bin/time -v SeqPurge -in1 $r1 -in2 $r2 -out1 "$folder"/$r1.seqpurge.fq.gz -out2 "$folder"/$r2.seqpurge.fq.gz \
+    $time -v SeqPurge -in1 $r1 -in2 $r2 -out1 "$folder"/$r1.seqpurge.fq.gz -out2 "$folder"/$r2.seqpurge.fq.gz \
         -a1 $a1 -a2 $a2 -mep 0.1 \
         -qcut 0 -min_len 0 -summary "$folder"/seqpurge.summary -threads $num_threads
 }
@@ -156,7 +163,7 @@ run_cutadapt() {
 		local isgz=
 	fi
     mkdir -p "$OUTDIR"
-    /usr/bin/time -v cutadapt -j $num_threads -a $a1 -A $a2 -o $output.R1.fq$isgz -p $output.R2.fq$isgz $r1 $r2
+    $time -v cutadapt -j $num_threads -a $a1 -A $a2 -o $output.R1.fq$isgz -p $output.R2.fq$isgz $r1 $r2
 }
 
 run_atropos() {
@@ -174,11 +181,11 @@ run_atropos() {
     mkdir -p "$folder"
 	if [[ $num_threads == 1 ]]
 	then
-	    /usr/bin/time -v atropos trim -a $a1 -A $a2 \
+	    $time -v atropos trim -a $a1 -A $a2 \
 	        -o "$folder"/$r1.atropos.fq$isgz -p "$folder"/$r2.atropos.fq$isgz -pe1 $r1 -pe2 $r2 \
 	        --aligner insert -e 0.1
 	else
-		/usr/bin/time -v atropos trim -a $a1 -A $a2 \
+		$time -v atropos trim -a $a1 -A $a2 \
 	        -o "$folder"/$r1.atropos.fq$isgz -p "$folder"/$r2.atropos.fq$isgz -pe1 $r1 -pe2 $r2 \
 	        --aligner insert -e 0.1 --threads $num_threads --preserve-order
 	fi

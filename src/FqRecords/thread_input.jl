@@ -3,10 +3,11 @@
     load_fqs_threads!(
         io1::IOStream                 , io2::IOStream                 ,
         in1bytes::Vector{UInt8}       , in2bytes::Vector{UInt8}       ,
-        vr1s::Vector{Vector{FqRecord}}, vr2s::Vector{Vector{FqRecord}},
-        r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ;
+        vr1s::NTuple{N, Vector{FqRecord}}, vr2s::NTuple{N, Vector{FqRecord}},
+        r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ,
+        task_r1s_unbox::Task          , task_r2s_unbox::Task          ;
         remove_first_n::Int64 = 0     , quality_offset::Int64=33      ,
-        njobs = 2                     )
+        njobs = 2                   ) where N
 
 The interface to load FASTQ files. Design for `IOStream` only.
 
@@ -18,8 +19,8 @@ function load_fqs_threads!(
     io1::IOStream                 , io2::IOStream                 ,
     in1bytes::Vector{UInt8}       , in2bytes::Vector{UInt8}       ,
     vr1s::NTuple{N, Vector{FqRecord}}, vr2s::NTuple{N, Vector{FqRecord}},
-    # vr1s::Vector{Vector{FqRecord}}, vr2s::Vector{Vector{FqRecord}},
-    r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ;
+    r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ,
+    task_r1s_unbox::Task          , task_r2s_unbox::Task          ;
     remove_first_n::Int64 = 0     , quality_offset::Int64=33      ,
     njobs = 2                   ) where N
 
@@ -66,22 +67,30 @@ function load_fqs_threads!(
     task_read2 = Threads.@spawn read_chunks!(io2, in2bytes, njobs)
 
     tasks = Task[]
+    wait(task_r1s_unbox)
+
+    # @info "load_fqs_threads! StringChunk2FqRecord! - start - R1"
     @inbounds for i in eachindex(idx_fq1_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks, i_task)
     end
 
+
     idx_fq2_starts, idx_fq2_stops = fetch(task_read2)
 
     tasks2 = Task[]
+    wait(task_r2s_unbox)
+    # @info "load_fqs_threads! StringChunk2FqRecord! - start - R2"
     @inbounds for i in eachindex(idx_fq2_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks2, i_task)
     end
-    # vr1s_stops = map(fetch, tasks)
+    
     n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
-    # vr2s_stops = map(fetch, tasks2)
+    # @info "load_fqs_threads! StringChunk2FqRecord! - stop - R1"
+
     n_r2 = append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
+    # @info "load_fqs_threads! StringChunk2FqRecord! - stop - R2"
 
     (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
 
@@ -93,7 +102,8 @@ end
         io1::IOStream                    ,
         in1bytes::Vector{UInt8}          ,
         vr1s::NTuple{N, Vector{FqRecord}},
-        r1s::Vector{FqRecord}            ;
+        r1s::Vector{FqRecord}            ,
+        task_r1s_unbox::Task             ;
         remove_first_n::Int64 = 0        ,
         quality_offset::Int64 = 33       ,
         njobs = 2                        ) where N
@@ -108,7 +118,8 @@ function load_fqs_threads!(
     io1::IOStream                    ,
     in1bytes::Vector{UInt8}          ,
     vr1s::NTuple{N, Vector{FqRecord}},
-    r1s::Vector{FqRecord}            ;
+    r1s::Vector{FqRecord}            ,
+    task_r1s_unbox::Task             ;
     remove_first_n::Int64 = 0        ,
     quality_offset::Int64 = 33       ,
     njobs = 2                        ) where N
@@ -144,12 +155,12 @@ function load_fqs_threads!(
     idx_fq1_starts, idx_fq1_stops = read_chunks!(io1, in1bytes, njobs)
 
     tasks = Task[]
+    wait(task_r1s_unbox)
     @inbounds for i in eachindex(idx_fq1_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset=quality_offset)
         push!(tasks, i_task)
     end
 
-    # vr1s_stops = map(fetch, tasks)
     n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
 
     (n_r1 == 0) && throw(error("Empty input from $io1"))
@@ -164,7 +175,8 @@ end
         in1bytes::Vector{UInt8}       , in2bytes::Vector{UInt8}       ,
         in1bytes_nremain::Integer     , in2bytes_nremain::Integer     ,
         vr1s::NTuple{N, Vector{FqRecord}}, vr2s::NTuple{N, Vector{FqRecord}},
-        r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ;
+        r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ,
+        task_r1s_unbox::Task          , task_r2s_unbox::Task          ;
         will_eof1::Bool = true        , will_eof2::Bool = true        ,
         in1bytes_resize_before_read::Integer = length(in1bytes)       ,
         in2bytes_resize_before_read::Integer = length(in2bytes)       ,
@@ -184,7 +196,8 @@ function load_fqs_threads!(
     in1bytes::Vector{UInt8}       , in2bytes::Vector{UInt8}       ,
     in1bytes_nremain::Integer     , in2bytes_nremain::Integer     ,
     vr1s::NTuple{N, Vector{FqRecord}}, vr2s::NTuple{N, Vector{FqRecord}},
-    r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ;
+    r1s::Vector{FqRecord}         , r2s::Vector{FqRecord}         ,
+    task_r1s_unbox::Task          , task_r2s_unbox::Task          ;
     will_eof1::Bool = true        , will_eof2::Bool = true        ,
     in1bytes_resize_before_read::Integer = length(in1bytes)       ,
     in2bytes_resize_before_read::Integer = length(in2bytes)       ,
@@ -248,21 +261,23 @@ function load_fqs_threads!(
     end
 
     tasks = Task[]
+    wait(task_r1s_unbox)
     @inbounds for i in eachindex(idx_fq1_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset = quality_offset)
         push!(tasks, i_task)
     end
-
+    
     idx_fq2_starts, idx_fq2_stops, in2bytes, in2bytes_nremain = fetch(task_read2)
 
     tasks2 = Task[]
+    wait(task_r2s_unbox)
     @inbounds for i in eachindex(idx_fq2_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr2s[i], in2bytes, idx_fq2_starts[i], idx_fq2_stops[i]; remove_first_n=-1, quality_offset = quality_offset)
         push!(tasks2, i_task)
     end
-    # vr1s_stops = map(fetch, tasks)
+
     n_r1 = FqRecords.append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
-    # vr2s_stops = map(fetch, tasks2)
+
     n_r2 = FqRecords.append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
 
     (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
@@ -277,7 +292,8 @@ end
         in1bytes::Vector{UInt8}       ,
         in1bytes_nremain::Integer     ,
         vr1s::NTuple{N, Vector{FqRecord}},
-        r1s::Vector{FqRecord}         ;
+        r1s::Vector{FqRecord}         ,
+        task_r1s_unbox::Task          ;
         will_eof1::Bool = true        ,
         remove_first_n::Int64 = 0     ,
         quality_offset::Int64 = 33    ,
@@ -296,7 +312,8 @@ function load_fqs_threads!(
     in1bytes::Vector{UInt8}       ,
     in1bytes_nremain::Integer     ,
     vr1s::NTuple{N, Vector{FqRecord}},
-    r1s::Vector{FqRecord}         ;
+    r1s::Vector{FqRecord}         ,
+    task_r1s_unbox::Task          ;
     will_eof1::Bool = true        ,
     remove_first_n::Int64 = 0     ,
     quality_offset::Int64 = 33    ,
@@ -332,12 +349,12 @@ function load_fqs_threads!(
     idx_fq1_starts, idx_fq1_stops, in1bytes, in1bytes_nremain = read_chunks!(io1, in1bytes, in1bytes_nremain, njobs; will_eof = will_eof1)
 
     tasks = Task[]
+    wait(task_r1s_unbox)
     @inbounds for i in eachindex(idx_fq1_starts)
         i_task = Threads.@spawn StringChunk2FqRecord!(vr1s[i], in1bytes, idx_fq1_starts[i], idx_fq1_stops[i]; remove_first_n=-1, quality_offset = quality_offset)
         push!(tasks, i_task)
     end
 
-    # vr1s_stops = map(fetch, tasks)
     n_r1 = append_loop!(r1s, vr1s, tasks; remove_first_n=n_remove_r1)
 
     (n_r1 == 0) && throw(error("Empty input from $io1"))

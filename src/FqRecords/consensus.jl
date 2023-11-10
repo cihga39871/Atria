@@ -2,9 +2,7 @@
 """
     pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert_size::Int64; min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
-Paired-end consensus calling for read pairs with adapters trimmed. Return `is_consensused::Bool, ratio_mismatch::Float64`.
-
-If no overlapped bases, `ratio_mismatch = 0.0`.
+Paired-end consensus calling for read pairs with adapters trimmed. Return `is_consensused::Bool`.
 """
 function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert_size::Int64; min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
@@ -49,7 +47,14 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert
     # the start of ncompatible, minus the score of extra tail match
     num_ones = length_overlap - cld(offset_max,8)*16
 
+    max_num_ones = floor(Int, (1+min_ratio_mismatch) * length_overlap)
+
     while p2_rc_offset <= offset_max
+
+        if num_ones > max_num_ones
+            return false
+        end
+
         # global ncompatible
         # global p1_offset
         # global p2_rc_offset
@@ -62,9 +67,13 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert
         p1_offset += 8
         p2_rc_offset += 8
     end
-    ratio_mismatch = (num_ones - length_overlap) / length_overlap
 
-    ratio_mismatch > min_ratio_mismatch && return false, ratio_mismatch
+    # ratio_mismatch = (num_ones - length_overlap) / length_overlap
+    # ratio_mismatch > min_ratio_mismatch && return false
+    
+    # equals to num_ones > (1-min_ratio_mismatch) * length_overlap && return false
+    # see max_num_ones
+
 
     # start comsensus calling
     r1_end = min(r1_length, insert_size)
@@ -97,17 +106,13 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert
         r1_i += 1
         r2_i -= 1
     end
-    return true, ratio_mismatch
+    return true
 end
 
 """
     pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNA{4}, r2_seq_rc::LongDNA{4}; kmer_tolerance::Int64 = 2, overlap_score::Float64 = 0.0, min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
-Paired-end consensus calling for read pairs without adapters. Check whether the read pair has an overlapped region first. Return `is_consensused::Bool, ratio_mismatch::Float64`.
-
-If no overlapped bases, `ratio_mismatch = 0.0`.
-
-If the lengths of R1 and R2 overlapped bases are different, `ratio_mismatch = -1.0`.
+Paired-end consensus calling for read pairs without adapters. Check whether the read pair has an overlapped region first. Return `is_consensused::Bool`.
 """
 function pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNA{4}, r2_seq_rc::LongDNA{4}; kmer_tolerance::Int64 = 2, overlap_score::Float64 = 0.0, min_ratio_mismatch::Float64 = 0.2, prob_diff::Float64 = 0.0)
 
@@ -116,21 +121,23 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r1_seq_rc::LongDNA{4}, r2_seq
     r1_length = length(r1_seq)
     r2_length = length(r2_seq)
 
-    r1_overlap_from, r1_overlap_nmatch = bitwise_scan(r2_seq_rc, r1_seq, 1, kmer_tolerance)
-    r2_overlap_from, r2_overlap_nmatch = bitwise_scan(r1_seq_rc, r2_seq, 1, kmer_tolerance)
+    # r1_overlap_from, r1_overlap_nmatch, ...
+    r1_ms = bitwise_scan(r2_seq_rc, r1_seq, 1, kmer_tolerance)
+    # r2_overlap_from, r2_overlap_nmatch, ...
+    r2_ms = bitwise_scan(r1_seq_rc, r2_seq, 1, kmer_tolerance)
 
     # r1_overlap_from == 0 && return false, -1.0
     # r2_overlap_from == 0 && return false, -1.0
 
-    r1_overlap_nbase = r1_length - r1_overlap_from + 1
-    r2_overlap_nbase = r2_length - r2_overlap_from + 1
+    r1_overlap_nbase = r1_length - r1_ms.idx + 1
+    r2_overlap_nbase = r2_length - r2_ms.idx + 1
     r1_overlap_nbase != r2_overlap_nbase && return false, -1.0
 
     if overlap_score > 0
-        r1_overlap_prob = probmean(r1, r1_overlap_from, r1_overlap_from + 15)
-        r2_overlap_prob = probmean(r2, r2_overlap_from, r2_overlap_from + 15)
+        r1_overlap_prob = probmean(r1, r1_ms.idx, r1_ms.idx + 15)
+        r2_overlap_prob = probmean(r2, r2_ms.idx, r2_ms.idx + 15)
 
-        max_overlap_score = max(r1_overlap_nmatch * r1_overlap_prob, r2_overlap_nmatch * r2_overlap_prob)
+        max_overlap_score = max(r1_ms.ncompatible * r1_overlap_prob, r2_ms.ncompatible * r2_overlap_prob)
         max_overlap_score < overlap_score && return false, -1.0
     end
 
