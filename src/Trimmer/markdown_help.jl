@@ -127,9 +127,9 @@ Filter read pair length in a range.
 
 Discard reads with low complexity. Complexity is the percentage of base that is different from its next base.
 
-    - Enable: `--enable-complexity-filtration` (default: disabled)
+- Enable: `--enable-complexity-filtration` (default: disabled)
 
-    - Complexity threshold: `--min-complexity 0.3` (default: 0.3)
+- Complexity threshold: `--min-complexity 0.3` (default: 0.3)
 
 ### Parallel computing
 
