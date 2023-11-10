@@ -14,8 +14,8 @@ function check_compatibility()
         exit()
     end
 
-    if !(v"1.8" <= VERSION < v"1.9")
-        @warn "Julia version is not v1.8. The build might be fail."
+    if !(v"1.8" <= VERSION < v"1.10")
+        @warn "Julia version is not v1.8 or 1.9. The build might be fail."
         # @error "Performance Notice: Atria built with Julia v1.5-1.6.1 is slower than Julia v1.4.2."
     end
 
