@@ -10,11 +10,8 @@ r2="reads_diff_indel.R2.fastq"
 # r1="reads_diff_indel.R1.fastq.gz"
 # r2="reads_diff_indel.R2.fastq.gz"
 
-atria_old=/export/home/CFIA-ACIA/chuanj/software/Atria/app-3.2.1/bin/atria
-atria_new=atria
-
-atria_old=/home/jc/projects/Atria/app-3.2.2-1/bin/atria
-atria_new=/home/jc/projects/Atria/app-4.0.0-devFixWriteSpeed/bin/atria
+atria_old=atria
+atria_new=/home/jc/projects/Atria-jl1.8/app-4.0.0_2023-11-10T09-58/bin/atria
 
 
 . $atria/benchmark/trimming-functions.bash
@@ -37,7 +34,7 @@ run_atria_src(){
         outdir=$2
     fi
 	export JULIA_NUM_THREADS=$num_threads
-	@time $atria/src/atria --no-consensus -t $num_threads -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --force
+	$time $atria/src/atria --no-consensus -t $num_threads -r $r1 -R $r2 -o $outdir --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration --adapter1 $a1 --adapter2 $a2 --force
 }
 
 run_atria(){
@@ -71,7 +68,7 @@ run_atria_new(){
     fi
     $time -v $atria_new --no-consensus -t $num_threads \
         -r $r1 -R $r2 \
-        -o Atria-new-4.0.0-devFixWriteSpeed \
+        -o Atria-new \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 --force
 }
@@ -83,7 +80,7 @@ run_atria_consensus_new(){
     fi
     $time -v $atria_new \
         -r $r1 -R $r2 \
-        -o Atria-consensus-new-4.0.0-devFixWriteSpeed \
+        -o Atria-consensus-new \
         --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
         --adapter1 $a1 --adapter2 $a2 -t $num_threads --force
 }

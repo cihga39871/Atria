@@ -15,7 +15,11 @@ function check_compatibility()
     end
 
     if !(v"1.8" <= VERSION < v"1.10")
-        @warn "Julia version is not v1.8 or 1.9. The build might be fail."
+        @warn "Julia version is not v1.8 or 1.9. The build might be fail." JULIA_VERSION = VERSION
+    end
+
+    if !(v"1.8" <= VERSION < v"1.9")
+        @warn "It is recommended to build Atria using Julia v1.8 because it is 3-20% faster than v1.9." JULIA_VERSION = VERSION
     end
 
     try
