@@ -12,3 +12,4 @@ tmp*/*
 app*/
 app
 /atria-*
+Manifest.toml
