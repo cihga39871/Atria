@@ -45,6 +45,7 @@ Order of trimming and filtration processing methods. Unlisted process will not b
    - QualityTrim
    - TailNTrim
    - MaxNFilter
+   - LengthFilter
    - ComplexityFilter
 
 
