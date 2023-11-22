@@ -42,6 +42,7 @@ check_compatibility()
 
 cd(@__DIR__)
 Pkg.activate(".")
+Pkg.update()
 Pkg.resolve()
 Pkg.instantiate()
 
