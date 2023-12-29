@@ -20,12 +20,12 @@ function pe_consensus!(r1::FqRecord, r2::FqRecord, r2_seq_rc::LongDNA{4}, insert
         else
             r1_i += 1
             deleteat!(r2_seq_rc, 1)
-            BioBits.unsafe_extra_bits_to_zeros!(r2_seq_rc)  # deleteat is not bitsafe, so have to use it.
+            BioSequences.unsafe_extra_bits_to_zeros!(r2_seq_rc)  # deleteat is not bitsafe, so have to use it.
             # r2_seq_rc.part = 2:r2_length
         end
     else
         deleteat!(r2_seq_rc, 1:r2_length-insert_size)
-        BioBits.unsafe_extra_bits_to_zeros!(r2_seq_rc)  # deleteat is not bitsafe, so have to use it.
+        BioSequences.unsafe_extra_bits_to_zeros!(r2_seq_rc)  # deleteat is not bitsafe, so have to use it.
         # r2_seq_rc.part = (r2_length-insert_size+1):r2_length
         r1_i = 1
     end

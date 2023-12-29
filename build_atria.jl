@@ -1,6 +1,7 @@
 #!julia --color=yes
 
 using Pkg
+using UUIDs
 
 if !isempty(intersect(ARGS, ["-h", "--help", "--h"]))
     println("Usage: $(@__FILE__) [path-to-install]")
@@ -38,13 +39,26 @@ function check_compatibility()
     # Pkg.add("PackageCompiler")
 end
 
+function check_biosequences_for_atria()
+    biosequences_info = Pkg.dependencies()[UUID("7e6ae17a-c86d-528c-b3b9-7f778a29fe59")]
+    if !occursin("cihga39871/BioSequences.jl", biosequences_info.git_source)
+        # Found package BioSequences from $(biosequences_info.git_source). Atria needs a specific version of BioSequences.
+        Pkg.add(url="https://github.com/cihga39871/BioSequences.jl")
+    end
+end
+
 check_compatibility()
 
 cd(@__DIR__)
 Pkg.activate(".")
 Pkg.update()
+Pkg.add(url="https://github.com/cihga39871/BioSequences.jl")
+check_biosequences_for_atria()
 Pkg.resolve()
 Pkg.instantiate()
+Pkg.precompile()
+
+
 
 import Pkg; Pkg.add("PackageCompiler")
 using PackageCompiler
@@ -123,7 +137,7 @@ ATRIA="$DIR/_atria"
 
 precompile_execution_file = joinpath("test", "runtests.jl")
 
-create_app(".", app_path, incremental = false, force = true, filter_stdlibs = true, sysimage_build_args = `-O3 --check-bounds=no --math-mode=fast`, precompile_execution_file = precompile_execution_file, executables = ["_atria" => "julia_main"])
+create_app(".", app_path, incremental = true, force = true, filter_stdlibs = false, sysimage_build_args = `-O3 --check-bounds=no --math-mode=fast`, precompile_execution_file = precompile_execution_file, executables = ["_atria" => "julia_main"])
 
 # ext = Sys.isapple() ? "dylib" : "so"
 # isfile(joinpath(app_path, "bin", "AtriaEntry.$ext"))

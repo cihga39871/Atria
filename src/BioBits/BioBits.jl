@@ -6,9 +6,9 @@ using Reexport
 @reexport using BioSymbols
 @reexport using BioSequences
 
-include("biosequences_safety.jl")
-export bitsafe!, 
-isbitsafe
+# include("biosequences_safety.jl")
+# export bitsafe!, 
+# isbitsafe
 
 include("get_seq.jl")
 export N2gap,
