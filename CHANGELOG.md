@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.0.1
+
+- Fix: dep cihga39871/BioSequences.jl: detailed error message if input files' line break is '\r\n'.
+
 ## v4.0.0
 
 - Optimize: algorithm: now the non-overtrim rate for reads without adapters are higher.
@@ -16,6 +20,7 @@
 ## v3.2.2-1
 
 - Fix: undef error of is_concensused when enabling --stat (thanks to kalavattam, #3)
+
 ## v3.2.2
 
 - Optimize: speed up for threads <= 2.
