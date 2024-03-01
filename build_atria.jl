@@ -76,9 +76,9 @@ if isfile("Project.toml")
 end
 
 if length(ARGS) == 1
-    app_path = joinpath(ARGS[1], "app-$ver")
+    app_path = joinpath(ARGS[1], "atria-$ver")
 else
-    app_path = joinpath(".", "app-$ver")
+    app_path = joinpath(".", "atria-$ver")
 end
 
 if isdir(app_path)
