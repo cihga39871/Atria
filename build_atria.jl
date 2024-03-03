@@ -152,6 +152,37 @@ write(io, bash_wrapper)
 close(io)
 chmod(Atria_bash, 0o755)
 
+# check if atria is successfully installed
+# eg: fix libs that is not copyed to lib path
+this_bin_dir = unsafe_string(Base.JLOptions().julia_bindir)
+this_lib_dir = abspath(this_bin_dir, "..", "lib", "julia")
+dest_lib_dir = abspath(app_path, "lib", "julia")
+
+function copy_missing_lib()
+    if !isdir(this_lib_dir)
+        return nothing # skip checking
+    end
+
+    buffer = IOBuffer()
+    run(pipeline(`$Atria_bash --version`, stderr=buffer, stdout=buffer))
+    res = String(take!(buffer))
+
+    if occursin("Error during initialization of module", res)
+        m = match(r"([^ \n]*\.(so|dylib|dll)([\.0-9]*)?): cannot open shared object file", res)
+        if isnothing(m)
+            return nothing
+        end
+        lib = joinpath(this_lib_dir, m.captures[1])
+        dest_lib = joinpath(dest_lib_dir, m.captures[1])
+        if isfile(lib) && !isfile(dest_lib)
+            @info "Copying $(m.captures[1])"
+            cp(lib, dest_lib, follow_symlinks=true)
+            copy_missing_lib()
+        end
+    end
+end
+copy_missing_lib()
+
 @info "Success. Atria is installed at $app_path/bin/atria"
 
 check_compatibility()
