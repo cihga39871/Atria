@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.0.2
+
+- Fix: `--detect-adapter` for paired reads: refer to index 1 of empty vector when no adapter is found.
+
 ## v4.0.1
 
 - Fix: dep cihga39871/BioSequences.jl: detailed error message if input files' line break is '\r\n'.

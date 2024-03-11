@@ -165,6 +165,17 @@ function check_pe_match(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}; kmer_toler
 end
 
 function read_adapter_stats(r_df::DataFrame, nread::Int; occurance::Float64 = 0.0004)
+    if nrow(r_df) == 0
+        empty_stats = DataFrame(
+            :adapter => LongDNA{4}[],
+            :count => Int64[],
+            :occurance => Float64[],
+            :identity => Float64[],
+            :adapter_start_position => Float64[]
+        )
+        return empty_stats
+    end
+
     gdf = groupby(r_df, :adapter)
     stats = combine(gdf, :adapter => (x -> x[1]) => :adapter, nrow => :count, :adapter_prob => mean => :identity, :adapter_start => mean => :adapter_start_position)
     
