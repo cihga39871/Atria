@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.0.3
+
+- Fix: `--order` or `-O` option should accept multiple arguments.
+
 ## v4.0.2
 
 - Fix: `--detect-adapter` for paired reads: refer to index 1 of empty vector when no adapter is found.

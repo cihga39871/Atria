@@ -82,6 +82,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             help = "order of trimming and filtration processing methods. Unlisted process will not be done. See epilog for process names"
             metavar = "PROCESS"
             default = String["DefaultOrder"]
+            nargs = '+'
     end
 
     add_arg_group!(settings, "poly X tail trimming")
