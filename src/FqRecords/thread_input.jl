@@ -435,13 +435,13 @@ Return chunk sizes of file 1 and 2, uncompressed sizes of file 1 and 2. If no co
 end
 
 """
-    adjust_inbyte_sizes(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)
+    get_ideal_inbyte_sizes(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)
 
 Return the new sizes of `in1bytes` and `in2bytes` according to number of reads in file 1 and file 2. The original sizes are not changed.
 
 Return (chunk_size1, chunk_size2):Tuple{Int,Int}
 """
-@inline function adjust_inbyte_sizes(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)::Tuple{Int,Int}
+@inline function get_ideal_inbyte_sizes(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)::Tuple{Int,Int}
 
     n_r1_read = n_r1 - n_r1_before
     n_r2_read = n_r2 - n_r2_before
@@ -481,7 +481,7 @@ Return (chunk_size1, chunk_size2):Tuple{Int,Int}
     chunk_size2 = (n_r1 - n_r2 + max_chunk_size/avg_length_r1) * avg_length_r2
     chunk_size2 = round(Int, chunk_size2)
     if chunk_size2 > max_chunk_size
-        @warn "Unexpected situation in adjust_inbyte_sizes!: chunk_size2 > max_chunk_size"
+        @warn "Unexpected situation in get_ideal_inbyte_sizes!: chunk_size2 > max_chunk_size"
     end
     # resize!(in1bytes, max_chunk_size)
     # resize!(in2bytes, chunk_size2)
@@ -489,14 +489,14 @@ Return (chunk_size1, chunk_size2):Tuple{Int,Int}
 end
 
 """
-    adjust_inbyte_sizes!(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)
+    get_ideal_inbyte_sizes!(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)
 
 Resize the sizes of `in1bytes` and `in2bytes` according to number of reads in file 1 and file 2.
 
 Return (chunk_size1, chunk_size2):Tuple{Int,Int}
 """
-@inline function adjust_inbyte_sizes!(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)::Tuple{Int,Int}
-    chunk_size1, chunk_size2 = adjust_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, default_chunk_size1, default_chunk_size2)
+@inline function get_ideal_inbyte_sizes!(in1bytes::Vector{UInt8}, in2bytes::Vector{UInt8}, n_r1::Int, n_r2::Int, n_r1_before::Int, n_r2_before::Int, max_chunk_size::Int, default_chunk_size1::Int, default_chunk_size2::Int)::Tuple{Int,Int}
+    chunk_size1, chunk_size2 = get_ideal_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, default_chunk_size1, default_chunk_size2)
     resize!(in1bytes, chunk_size1)
     resize!(in2bytes, chunk_size2)
     return (chunk_size1, chunk_size2)

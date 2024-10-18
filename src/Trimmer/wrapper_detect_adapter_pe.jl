@@ -143,7 +143,7 @@ function julia_wrapper_detect_adapter_pe(ARGS::Vector{String}; exit_after_help =
             total_read_copied_in_loading += ncopied
 
             # it only get the sizes, did not change the sizes. Size changing is done in the "Read" part.
-            chunk_size1, chunk_size2 = adjust_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
+            chunk_size1, chunk_size2 = get_ideal_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
 
             # check_fq_ids(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, n_reads::Int)::nothing
 

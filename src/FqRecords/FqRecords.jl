@@ -19,8 +19,8 @@ load_fqs_threads!,
 read_chunks!,
 StringChunk2FqRecord!,
 chunk_sizes,
-adjust_inbyte_sizes,
-adjust_inbyte_sizes!,
+get_ideal_inbyte_sizes,
+get_ideal_inbyte_sizes!,
 write_fqs_threads!,
 isinreadlength!,
 count_N,
@@ -61,6 +61,9 @@ export adapter_match_se
 include("adapter_match_pe.jl")
 export adapter_match_and_trim_pe!,
 adapter_match_pe, 
-PEOptions, AdapterPERes 
+PEOptions, AdapterPERes
+
+include("pcr_dedup.jl")
+export DupCount, pcr_dedup, write_pcr_dedup_count
 
 end

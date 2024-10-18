@@ -5,6 +5,11 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.1.0
+
+- Feature: PCRDedup: remove PCR duplicates from fastq files. The entire paired sequence is compared.
+- TODO: Need fix `polyX_tail_scan`.
+
 ## v4.0.3
 
 - Fix: `--order` or `-O` option should accept multiple arguments.

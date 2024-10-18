@@ -25,6 +25,16 @@ Output all files to a directory: `-o PATH` or `--output-dir PATH`. Default is th
 
 Atria skips completed analysis by default. Use `-f` or `--force` to disable the feature.
 
+### Remove PCR duplicates
+
+Only write unique sequences (dedup). Paired reads are only considered identical if both reads are duplicates to both reads in a previous pair. 
+
+> Dedup requires additional memory because it stores all unique sequences in memory. 
+
+- Enable: `--pcr-dedup`.
+
+- Also write a count table of PCR duplicates: `--pcr-dedup-count`.
+
 ### Order of processing
 
 Order of trimming and filtration processing methods. Unlisted process will not be done. See default for process names.
@@ -47,6 +57,7 @@ Order of trimming and filtration processing methods. Unlisted process will not b
    - MaxNFilter
    - LengthFilter
    - ComplexityFilter
+   - DoNothing
 
 
 ### Poly X Tail Trimming (PolyG / PolyT / PolyA / PolyC)

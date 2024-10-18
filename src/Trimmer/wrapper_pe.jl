@@ -58,6 +58,8 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     # feature enable/disable
     do_check_identifier      =  args["check-identifier"    ]
+    do_pcr_dedup             =  args["pcr-dedup"           ]
+    do_pcr_dedup_count       =  args["pcr-dedup-count"     ]
     do_polyG                 =  args["polyG"               ]
     do_polyT                 =  args["polyT"               ]
     do_polyA                 =  args["polyA"               ]
@@ -260,7 +262,8 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         "TailNTrim" => [TailNTrim],
         "MaxNFilter" => [MaxNFilter],
         "LengthFilter" => [LengthFilter],
-        "ComplexityFilter" => [ComplexityFilter]
+        "ComplexityFilter" => [ComplexityFilter],
+        "DoNothing" => [nothing]
     )
 
     for step in args["order"]
@@ -276,180 +279,19 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
             append!(ReadProcess.args, step_expr.args)
         end
     end
-    
-    #=AdapterTrim = do_adapter_trimming ? quote
-        # rx_seq_rc is not initialized by this rx
-        r1_seq_rc = $r1_seq_rc_threads[thread_id]
-        r2_seq_rc = $r2_seq_rc_threads[thread_id]
 
-        r1_adapter_pos, r1_adapter_nmatch = bitwise_scan($adapter1_seqheadset, r1.seq, 1, $kmer_tolerance)
-        r2_adapter_pos, r2_adapter_nmatch = bitwise_scan($adapter2_seqheadset, r2.seq, 1, $kmer_tolerance)
-
-        r2_seqheadset = SeqHeadSet(r2.seq)
-        r1_seqheadset = SeqHeadSet(r1.seq)
-        extra_tolerance = max(r1_adapter_nmatch, r2_adapter_nmatch) < $kmer_n_match
-
-        # rx_seq_rc is replaced with reverse complement of rx.seq
-        r1_insert_size_pe, r1_pe_nmatch = bitwise_scan_rc!(r1_seq_rc, r2_seqheadset, r1.seq, 1, $kmer_tolerance + extra_tolerance, init_rc_dest = true)
-        r2_insert_size_pe, r2_pe_nmatch = bitwise_scan_rc!(r2_seq_rc, r1_seqheadset, r2.seq, 1, $kmer_tolerance + extra_tolerance, init_rc_dest = true)
-
-        # if one hit, then check other matches with loosen kmer tomerance
-        max_nmatch = max(r1_adapter_nmatch, r2_adapter_nmatch, r1_pe_nmatch, r2_pe_nmatch)
-        if max_nmatch > $kmer_n_match
-            max_adapter_pos = if r1_adapter_nmatch == max_nmatch
-                r1_adapter_pos
-            elseif r2_adapter_nmatch == max_nmatch
-                r2_adapter_pos
-            elseif r1_pe_nmatch == max_nmatch
-                r1_insert_size_pe + 1
-            elseif r2_pe_nmatch == max_nmatch
-                r2_insert_size_pe + 1
-            end
-
-            if r1_adapter_nmatch < $kmer_n_match
-                r1_adapter_pos2, r1_adapter_nmatch2 = bitwise_scan($adapter1_seqheadset, r1.seq, max_adapter_pos, $(kmer_tolerance+3), until=max_adapter_pos+1)
-                if r1_adapter_nmatch2 > $kmer_n_match
-                    r1_adapter_pos = r1_adapter_pos2
-                    r1_adapter_nmatch = r1_adapter_nmatch2
-                end
-            end
-            if r2_adapter_nmatch < $kmer_n_match
-                r2_adapter_pos2, r2_adapter_nmatch2 = bitwise_scan($adapter2_seqheadset, r2.seq, max_adapter_pos, $(kmer_tolerance+3), until=max_adapter_pos+1)
-                if r2_adapter_nmatch2 > $kmer_n_match
-                    r2_adapter_pos = r2_adapter_pos2
-                    r2_adapter_nmatch = r2_adapter_nmatch2
-                end
-            end
-            if r1_pe_nmatch < $kmer_n_match
-                r1_rc_pos2 = length(r1.seq) - max_adapter_pos + 2
-                r1_insert_size_pe2, r1_pe_nmatch2 = bitwise_scan(r2_seqheadset, r1_seq_rc, r1_rc_pos2, $(kmer_tolerance+3), until=r1_rc_pos2+1)
-                if r1_pe_nmatch2 > $kmer_n_match
-                    r1_insert_size_pe = r1_insert_size_pe2 == 0 ? 0 : length(r1.seq) - r1_insert_size_pe2 + 1
-                    r1_pe_nmatch = r1_pe_nmatch2
-                end
-            end
-            if r2_pe_nmatch < $kmer_n_match
-                r2_rc_pos2 = length(r2.seq) - max_adapter_pos + 2
-                r2_insert_size_pe2, r2_pe_nmatch2 = bitwise_scan(r1_seqheadset, r2_seq_rc, r2_rc_pos2, $(kmer_tolerance+3), until=r2_rc_pos2+1)
-                if r2_pe_nmatch2 > $kmer_n_match
-                    r2_insert_size_pe = r2_insert_size_pe2 == 0 ? 0 : length(r2.seq) - r2_insert_size_pe2 + 1
-                    r2_pe_nmatch = r2_pe_nmatch2
-                end
-            end
-        end
-
-        r1_insert_size = r1_adapter_pos - 1
-        r2_insert_size = r2_adapter_pos - 1
-
-        r1_adapter_prob_0 = probmean(r1, r1_adapter_pos, r1_adapter_pos + 15)
-        r2_adapter_prob_0 = probmean(r2, r2_adapter_pos, r2_adapter_pos + 15)
-        r1_head_prob_0 = probmean(r1, 1, 16)
-        r2_head_prob_0 = probmean(r2, 1, 16)
-        r1_pe_prob_0 = probmean(r1, r1_insert_size_pe - 15, r1_insert_size_pe)
-        r2_pe_prob_0 = probmean(r2, r2_insert_size_pe - 15, r2_insert_size_pe)
-
-        r1_adapter_prob = max(0.75, r1_adapter_prob_0)
-        r2_adapter_prob = max(0.75, r2_adapter_prob_0)
-        r1_head_prob = max(0.75, r1_head_prob_0)
-        r2_head_prob = max(0.75, r2_head_prob_0)
-        r1_pe_prob = max(0.75, r1_pe_prob_0)
-        r2_pe_prob = max(0.75, r2_pe_prob_0)
-
-        r1_adapter_score = @fastmath r1_adapter_nmatch * r1_adapter_prob
-        r2_adapter_score = @fastmath r2_adapter_nmatch * r2_adapter_prob
-        r1_pe_score = @fastmath(r1_pe_nmatch * r1_pe_prob * r2_head_prob)
-        r2_pe_score = @fastmath(r2_pe_nmatch * r2_pe_prob * r1_head_prob)
-
-        # choose possible insert size
-        r1_insert_size_real, r1_score = insert_size_decision(r1_insert_size, r1_adapter_score, r1_insert_size_pe, r1_pe_score, insert_size_diff=$pe_adapter_diff)
-        r2_insert_size_real, r2_score = insert_size_decision(r2_insert_size, r2_adapter_score, r2_insert_size_pe, r2_pe_score, insert_size_diff=$pe_adapter_diff)
-
-        r1_insert_size_decision, r2_insert_size_decision, r12_score = insert_size_decision_separate(r1_insert_size_real, r1_score, r2_insert_size_real, r2_score, insert_size_diff=$r1_r2_diff)
-
-        @static if $do_read_stats
-            r12_trim = false
-            is_consensused = false
-        end
-
-        # v2.1.0: If a r1/2 adapter is found, but the region of r2/1 is missing or its quality too low (mean prob < 0.6), skip PE check and just trim like single-end
-        if abs(r1_insert_size_real - r2_insert_size_real) > $r1_r2_diff
-            if r1_score > $trim_score_se
-                r2_probs = probmean(r2, r1_insert_size_real + 1, r1_insert_size_real + 16)
-                if r2_probs < 0.6
-                    r2_insert_size_real = r1_insert_size_real
-                    @goto trim
-                end
-            elseif r2_score > $trim_score_se
-                r1_probs = probmean(r1, r2_insert_size_real + 1, r2_insert_size_pe + 16)
-                if r1_probs < 0.6
-                    r1_insert_size_real = r2_insert_size_real
-                    @goto trim
-                end
-            end
-        end
-
-        if r12_score > $trim_score
-            # < 0: no adapter / pe matched
-            is_true_positive = !is_false_positive(r1_insert_size, r1_insert_size_pe, length(r1.seq),
-                                         r2_insert_size, r2_insert_size_pe, length(r2.seq),
-                                         insert_size_diff=$pe_adapter_diff, tail_length=$tail_length)
-            if is_true_positive
-                @label trim
-                @static if $do_consensus_calling
-                    if r1_insert_size_decision == r2_insert_size_decision && r1_insert_size_decision > 0
-                        is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r2_seq_rc, r1_insert_size_decision; min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
-                    end
-                end
-
-                # v3.0.0-dev: If choose to trim adapter, check 1 bp offset of adapter sequences. It is because Atria might have 1 bp error in some cases.
-                r1_nremain = if r1_insert_size_decision >= 1
-                    one_bp_check(r1.seq, $adapter1, r1_insert_size_decision, 4)
-                else
-                    r1_insert_size_decision
-                end
-                r2_nremain = if r2_insert_size_decision >= 1
-                    one_bp_check(r2.seq, $adapter2, r2_insert_size_decision, 4)
-                else
-                    r1_insert_size_decision
-                end
-
-                tail_trim!(r1::FqRecord, max(r1_nremain, 0))
-                tail_trim!(r2::FqRecord, max(r2_nremain, 0))
-
-                @static if $do_read_stats
-                    r12_trim = true
-                end
-            else
-                # no adapter, pe consensus for short overlap
-                @static if $do_consensus_calling
-                    is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
-                end
-            end
-        else
-            # no adapter, pe consensus for short overlap
-            @static if $do_consensus_calling
-                is_consensused, ratio_mismatch = pe_consensus!(r1, r2, r1_seq_rc, r2_seq_rc; kmer_tolerance=$kmer_tolerance_consensus, overlap_score=$overlap_score, min_ratio_mismatch=$min_ratio_mismatch, prob_diff=$prob_diff)
-            end
-        end
-
-        # stats in FqRecord:
-        @static if $do_read_stats
-            adapter_trimming_stat = "Res\t$r12_trim\t$(length(r1.seq))\t$(length(r2.seq))\t|R1\t$r1_insert_size\t$r1_adapter_score\t$r1_insert_size_pe\t$r1_pe_score\t|R2\t$r2_insert_size\t$r2_adapter_score\t$r2_insert_size_pe\t$r2_pe_score\t|prob\t$r1_adapter_prob\t$r2_adapter_prob\t$r1_pe_prob\t$r2_pe_prob\t$r1_head_prob\t$r2_head_prob\t|consensus\t$is_consensused"
-            append!(r2.des, adapter_trimming_stat)
-        end
-    end : nothing
-    =#
-
+    # processing_reads_threads! without dedup
     @eval function processing_reads_threads!(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
         if length(isgoods) != n_reads
             resize!(isgoods, n_reads)
         end
+
         # split reads to N reads per batch
         Threads.@threads :static for reads_start in 1:1024:n_reads
             reads_end = min(reads_start + 1023, n_reads)
             reads_range = reads_start:reads_end
             thread_id = Threads.threadid()
-            for i in reads_range
+            @inbounds for i in reads_range
                 r1 = r1s[i]
                 r2 = r2s[i]
                 is_good = true
@@ -458,6 +300,34 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                 @inbounds isgoods[i] = is_good
             end
         end
+    end
+
+    # processing_reads_threads! with dedup
+    @eval function processing_reads_threads!(r1s::Vector{FqRecord}, r2s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int, dup_dict::Dict{Tuple{LongSequence{DNAAlphabet{4}}, LongSequence{DNAAlphabet{4}}}, DupCount})
+        if length(isgoods) != n_reads
+            resize!(isgoods, n_reads)
+        end
+        fill!(isgoods, true)
+
+        n_dup = pcr_dedup(dup_dict, r1s, r2s, isgoods, n_reads)
+
+        # split reads to N reads per batch
+        Threads.@threads :static for reads_start in 1:1024:n_reads
+            reads_end = min(reads_start + 1023, n_reads)
+            reads_range = reads_start:reads_end
+            thread_id = Threads.threadid()
+            @inbounds for i in reads_range
+                if isgoods[i]  # pass dedup
+                    r1 = r1s[i]
+                    r2 = r2s[i]
+                    is_good = true
+                    $ReadProcess
+                    @label stop_read_processing
+                    @inbounds isgoods[i] = is_good
+                end
+            end
+        end
+        n_dup
     end
 
 
@@ -477,6 +347,8 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     outr1s = Vector{Vector{UInt8}}()
     outr2s = Vector{Vector{UInt8}}()
+
+    dup_dict = Dict{Tuple{LongSequence{DNAAlphabet{4}}, LongSequence{DNAAlphabet{4}}}, DupCount}()
 
     time_program_initializing = time() - time_program_initializing
 
@@ -563,6 +435,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         @info "ATRIA ARGUMENTS" command
         @info "ATRIA OUTPUT FILES" read1=outfile1 read2=outfile2
         @info("ATRIA TRIMMERS AND FILTERS",
+            pcr_dedup = do_pcr_dedup,
             adapter_trimming = do_adapter_trimming,
             consensus_calling = do_consensus_calling,
             hard_clip_3_end_r1 = do_hard_clip_3_end_r1,
@@ -579,6 +452,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
             @info "ATRIA ARGUMENTS" command
             @info "ATRIA OUTPUT FILES" read1=outfile1 read2=outfile2
             @info("ATRIA TRIMMERS AND FILTERS",
+                pcr_dedup = do_pcr_dedup,
                 adapter_trimming = do_adapter_trimming,
                 consensus_calling = do_consensus_calling,
                 hard_clip_3_end_r1 = do_hard_clip_3_end_r1,
@@ -610,6 +484,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         # clear common variables
         empty!(r1s)
         empty!(r2s)
+        empty!(dup_dict)
 
         n_reads = 0
         n_r1 = 0
@@ -618,6 +493,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         total_read_copied_in_loading = 0
         total_n_goods = 0
         total_n_reads = 0
+        total_n_pcr_dup = 0
         total_n_bytes_read1 = 0
         total_n_bytes_read2 = 0
         in1bytes_nremain = 0
@@ -637,6 +513,10 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                 length(in1bytes) == chunk_size1 || resize!(in1bytes, chunk_size1)
                 length(in2bytes) == chunk_size2 || resize!(in2bytes, chunk_size2)
                 (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s, task_r1s_unbox, task_r2s_unbox; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
+
+                # it only get the sizes, did not change the sizes. Size changing is done in the "Read" part.
+                chunk_size1, chunk_size2 = get_ideal_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
+
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
                 total_n_bytes_read2 += length(in2bytes)  # will read INT in this batch
@@ -651,18 +531,39 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                     in2bytes_resize_before_read = chunk_size2,
                     remove_first_n = n_reads, quality_offset = quality_offset,
                     njobs = njobs
-                )
+                );
             end
 
             n_reads = min(n_r1, n_r2)
             total_read_copied_in_loading += ncopied
 
-            # it only get the sizes, did not change the sizes. Size changing is done in the "Read" part.
-            chunk_size1, chunk_size2 = adjust_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
-
             # processing reads
             isgoods = nbatch % 2 == 0 ? isgoods_even : isgoods_odd  # write task is still using the other one! 
-            Base.invokelatest(processing_reads_threads!, r1s, r2s, isgoods, n_reads)
+
+            if do_pcr_dedup
+                n_dup = Base.invokelatest(processing_reads_threads!, r1s, r2s, isgoods, n_reads, dup_dict)
+                
+                # size hint estimate
+                if nbatch == 1
+                    n_uniq = n_reads - n_dup
+                    if uncompressed_size1 == -1
+                        if isingzip
+                            uncompressed_size = filesize(file1) / 0.14
+                        elseif isinbzip2
+                            uncompressed_size = filesize(file1) / 0.12
+                        else
+                            uncompressed_size = filesize(file1)
+                        end
+                    else
+                        uncompressed_size = uncompressed_size1
+                    end
+                    processed_rate = length(in1bytes) / uncompressed_size
+                    n_uniq_all = round(Int, n_uniq / processed_rate * 1.2)
+                    sizehint!(dup_dict, n_uniq_all)
+                end
+            else
+                Base.invokelatest(processing_reads_threads!, r1s, r2s, isgoods, n_reads)
+            end
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
@@ -676,10 +577,14 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
             n_goods = fetch(task_sum)
             total_n_goods += n_goods
             total_n_reads += n_reads
+            
+            if do_pcr_dedup
+                total_n_pcr_dup += n_dup
+                @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods pairs; skip $n_dup/$total_n_pcr_dup PCR duplicates; (copied $ncopied/$total_read_copied_in_loading reads)"
+            else
+                @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods pairs; (copied $ncopied/$total_read_copied_in_loading reads)"
 
-            # @info "Cycle $nbatch: processed $n_reads read pairs ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
-
-            @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods pairs; (copied $ncopied/$total_read_copied_in_loading reads)"
+            end
             return task_r1s_unbox, task_r2s_unbox, task_write1, task_write2
         end
 
@@ -717,6 +622,12 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         close(io2out)
         close(iolog)
 
+        #================== Dedup stats ====================#
+        if do_pcr_dedup && do_pcr_dedup_count
+            out_pcr_dedup_count = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.pcr_dedup_count.tsv", count=1))
+            write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
+        end
+
         #================== JSON log ====================#
 
         logjson = OrderedDict()
@@ -743,10 +654,19 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
             "read-processing-time" => time_read_processing,
             "post-processing-time"=> time_post_processing
         )
-        logjson["trimming-details"] = OrderedDict(
-            "good-read-pairs" => total_n_goods,
-            "total-read-pairs" => total_n_reads,
-        )
+        
+        if do_pcr_dedup
+            logjson["trimming-details"] = OrderedDict(
+                "good-read-pairs" => total_n_goods,
+                "pcr-deplicate-pairs" => total_n_pcr_dup,
+                "total-read-pairs" => total_n_reads,
+            )
+        else
+            logjson["trimming-details"] = OrderedDict(
+                "good-read-pairs" => total_n_goods,
+                "total-read-pairs" => total_n_reads,
+            )
+        end
 
         iologjson = open(outjson, "w+")
         JSON.print(iologjson, sort!(logjson), 4)

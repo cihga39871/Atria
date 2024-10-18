@@ -52,6 +52,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
     # feature enable/disable
     do_check_identifier      =  false
+    do_pcr_dedup             =  args["pcr-dedup"           ]
+    do_pcr_dedup_count       =  args["pcr-dedup-count"     ]
     do_polyG                 =  args["polyG"               ]
     do_polyT                 =  args["polyT"               ]
     do_polyA                 =  args["polyA"               ]
@@ -191,7 +193,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         "TailNTrim" => [TailNTrim],
         "MaxNFilter" => [MaxNFilter],
         "LengthFilter" => [LengthFilter],
-        "ComplexityFilter" => [ComplexityFilter]
+        "ComplexityFilter" => [ComplexityFilter],
+        "DoNothing" => [nothing]
     )
 
     for step in args["order"]
@@ -215,6 +218,9 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             @inbounds isgoods[i] = read_processing!(r1s[i], this_threadid)
         end
     end
+
+    
+    # processing_reads_threads! without dedup
     @eval function processing_reads_threads!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
         if length(isgoods) != n_reads
             resize!(isgoods, n_reads)
@@ -234,6 +240,32 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             end
         end
     end
+
+    # processing_reads_threads! with dedup
+    @eval function processing_reads_threads!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int, dup_dict::Dict{LongSequence{DNAAlphabet{4}}, DupCount})
+        if length(isgoods) != n_reads
+            resize!(isgoods, n_reads)
+        end
+        fill!(isgoods, true)
+
+        n_dup = pcr_dedup(dup_dict, r1s, isgoods, n_reads)
+
+        # split reads to N reads per batch
+        Threads.@threads :static for reads_start in 1:512:n_reads
+            reads_end = min(reads_start + 511, n_reads)
+            reads_range = reads_start:reads_end
+            thread_id = Threads.threadid()
+    
+            for i in reads_range
+                r1 = r1s[i]
+                is_good = true
+                $ReadProcess
+                @label stop_read_processing
+                @inbounds isgoods[i] = is_good
+            end
+        end
+        n_dup
+    end
     
     in1bytes = Vector{UInt8}(undef, max_chunk_size)
 
@@ -248,6 +280,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
     outr1s = Vector{Vector{UInt8}}()
 
+    dup_dict = Dict{LongSequence{DNAAlphabet{4}}, DupCount}()
 
     time_program_initializing = time() - time_program_initializing
 
@@ -366,6 +399,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
         # clear common variables
         empty!(r1s)
+        empty!(dup_dict)
 
         #=
         global n_reads
@@ -384,6 +418,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         total_read_copied_in_loading = 0
         total_n_goods = 0
         total_n_reads = 0
+        total_n_pcr_dup = 0
         total_n_bytes_read1 = 0
         in1bytes_nremain = 0
 
@@ -416,7 +451,35 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             total_read_copied_in_loading += ncopied
 
             isgoods = nbatch % 2 == 0 ? isgoods_even : isgoods_odd  # write task is still using the other one! 
-            Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
+            
+            if do_pcr_dedup
+                n_dup = Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads, dup_dict)
+                
+                # size hint estimate
+                chunk_size1, chunk_size2, uncompressed_size1, uncompressed_size2 = chunk_sizes(file1, file1, max_chunk_size)
+
+                if uncompressed_size1 == -1
+                    if isingzip
+                        uncompressed_size = filesize(file1) / 0.14
+                    elseif isinbzip2
+                        uncompressed_size = filesize(file1) / 0.12
+                    else
+                        uncompressed_size = filesize(file1)
+                    end
+                else
+                    uncompressed_size = uncompressed_size1
+                end
+
+                if nbatch == 1
+                    n_uniq = n_reads - n_dup
+                    processed_rate = length(in1bytes) / uncompressed_size
+                    n_uniq_all = round(Int, n_uniq / processed_rate * 1.2)
+                    sizehint!(dup_dict, n_uniq_all)
+                end
+            else
+                Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
+
+            end
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
@@ -431,8 +494,13 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             total_n_goods += n_goods
             total_n_reads += n_reads
 
-            # @info "Cycle $nbatch: processed $n_reads reads ($total_n_reads in total), in which $n_goods passed filtration ($total_n_goods in total). ($ncopied/$total_read_copied_in_loading reads copied)"
-            @info "Cycle $nbatch: read $n_reads/$total_n_reads pairs; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
+            if do_pcr_dedup
+                total_n_pcr_dup += n_dup
+                @info "Cycle $nbatch: read $n_reads/$total_n_reads; wrote $n_goods/$total_n_goods; skip $n_dup/$total_n_pcr_dup PCR duplicates (copied $ncopied/$total_read_copied_in_loading)"
+            else
+                @info "Cycle $nbatch: read $n_reads/$total_n_reads; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
+
+            end
             return task_r1s_unbox, task_write1
         end
 
@@ -460,6 +528,12 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         close(io1out)
         close(iolog)
 
+        #================== Dedup stats ====================#
+        if do_pcr_dedup && do_pcr_dedup_count
+            out_pcr_dedup_count = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.pcr_dedup_count.tsv", count=1))
+            write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
+        end
+
         #================== JSON log ====================#
 
         logjson = OrderedDict()
@@ -484,10 +558,19 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             "read-processing-time" => time_read_processing,
             "post-processing-time"=> time_post_processing
         )
-        logjson["trimming-details"] = OrderedDict(
-            "good-read" => total_n_goods,
-            "total-read" => total_n_reads,
-        )
+
+        if do_pcr_dedup
+            logjson["trimming-details"] = OrderedDict(
+                "good-reads" => total_n_goods,
+                "pcr-deplicates" => total_n_pcr_dup,
+                "total-reads" => total_n_reads,
+            )
+        else
+            logjson["trimming-details"] = OrderedDict(
+                "good-reads" => total_n_goods,
+                "total-reads" => total_n_reads,
+            )
+        end
 
         iologjson = open(outjson, "w+")
         JSON.print(iologjson, sort!(logjson), 4)

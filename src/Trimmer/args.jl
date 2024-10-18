@@ -26,7 +26,8 @@ function parsing_args(args::Vector; exit_after_help = true)
             TailNTrim       ,
             MaxNFilter      ,
             LengthFilter    ,
-            ComplexityFilter.
+            ComplexityFilter,
+            DoNothing       .
 
         ----------
 
@@ -76,6 +77,16 @@ function parsing_args(args::Vector; exit_after_help = true)
             action = :store_true
     end
 
+    add_arg_group!(settings, "remove duplicate (large RAM required)")
+    @add_arg_table! settings begin
+        "--pcr-dedup"
+            help = "enable pcr dedup: remove PCR duplicates. Paired reads are only considered identical if both reads are duplicates to both reads in a previous pair."
+            action = :store_true
+        "--pcr-dedup-count"
+            help = "if --pcr-dedup, write a table of duplicate count" 
+            action = :store_true
+    end
+    
     add_arg_group!(settings, "processing order")
     @add_arg_table! settings begin
         "--order", "-O"

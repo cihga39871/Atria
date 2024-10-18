@@ -194,6 +194,7 @@ end
 
 
 @inline function polyX_tail_scan(a::DNA, b::LongDNA{4}, allowed_mismatch_per_16mer::Int64; until::Int64 = 1)
+    # TODO b = dna"ATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATTAAAAAAAAAAAAAAATAATT"
     best_idx = 0
     n = length(b)
     n_mismatch = 0
@@ -204,7 +205,7 @@ end
             best_idx = n
         else
             n_mismatch += 1
-            n_mismatch <= allowed_mismatch && break
+            n_mismatch > allowed_mismatch && break
         end
         n -= 1
         n_polyX_length += 1
