@@ -194,26 +194,75 @@ end
 
 
 @inline function polyX_tail_scan(a::DNA, b::LongDNA{4}, allowed_mismatch_per_16mer::Int64; until::Int64 = 1)
-    # TODO b = dna"ATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATTAAAAAAAAAAAAAAATAATT"
     best_idx = 0
-    n = length(b)
+    N = length(b)
+    n = N
     n_mismatch = 0
     allowed_mismatch = allowed_mismatch_per_16mer
-    n_polyX_length = 0
     while n >= until
         if @inbounds(b[n]) === a
             best_idx = n
         else
             n_mismatch += 1
-            n_mismatch > allowed_mismatch && break
+            if n_mismatch > allowed_mismatch
+                break
+            end
         end
         n -= 1
-        n_polyX_length += 1
-        if n_polyX_length % 16 == 0
-            allowed_mismatch += allowed_mismatch_per_16mer
+        if (N-n) % 16 == 0
+            allowed_mismatch = allowed_mismatch_per_16mer
         end
     end
-    best_idx, n_polyX_length
+
+    # check if can elongate
+
+    best_idx2 = 0
+    n -= 1
+    while n >= until
+        if @inbounds(b[n]) === a
+            best_idx2 = n
+        else
+            n_mismatch += 1
+            if n_mismatch > allowed_mismatch
+                break
+            end
+        end
+        n -= 1
+        if (N-n) % 16 == 0
+            allowed_mismatch = allowed_mismatch_per_16mer
+        end
+    end
+    if best_idx2 > 0  # found
+        best_idx = best_idx2
+    elseif best_idx == 0  # not found
+        return 0,0
+    end
+
+    # reverse check
+    n_r_match = 1
+    n_r_mismatch = 0
+    n = best_idx + 1
+    in_mismatch_region = false
+    while n_r_match <= allowed_mismatch_per_16mer && n <= N
+        if @inbounds(b[n]) === a
+            if in_mismatch_region
+                break
+            end
+            n_r_match += 1
+        else
+            in_mismatch_region = true
+            n_r_mismatch += 1
+        end
+        n += 1
+    end
+    if n_r_mismatch >= n_r_match  # revert
+        best_idx = n
+    end
+    if best_idx > N  # occurs when very poor match, best_idx2 > 0 and best_idx == 0
+        return 0,0
+    end
+    n_polyX_length = N - best_idx + 1
+    return best_idx, n_polyX_length
 end
 
 @inline polyX_tail_scan(a::DNA, b::FqRecord, allowed_mismatch_per_16mer::Int64; until::Int64 = 1) = polyX_tail_scan(a, b.seq, allowed_mismatch_per_16mer; until = until)

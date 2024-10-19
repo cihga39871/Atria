@@ -25,16 +25,6 @@ Output all files to a directory: `-o PATH` or `--output-dir PATH`. Default is th
 
 Atria skips completed analysis by default. Use `-f` or `--force` to disable the feature.
 
-### Remove PCR duplicates
-
-Only write unique sequences (dedup). Paired reads are only considered identical if both reads are duplicates to both reads in a previous pair. 
-
-> Dedup requires additional memory because it stores all unique sequences in memory. 
-
-- Enable: `--pcr-dedup`.
-
-- Also write a count table of PCR duplicates: `--pcr-dedup-count`.
-
 ### Order of processing
 
 Order of trimming and filtration processing methods. Unlisted process will not be done. See default for process names.
@@ -57,7 +47,7 @@ Order of trimming and filtration processing methods. Unlisted process will not b
    - MaxNFilter
    - LengthFilter
    - ComplexityFilter
-   - DoNothing
+   - PCRDedup
 
 
 ### Poly X Tail Trimming (PolyG / PolyT / PolyA / PolyC)
@@ -118,7 +108,8 @@ Trim low-quality tails. Trimming read tails when the average quality of bases in
 ### Tail N Trimming (TailNTrim)
 
 Trim N tails.
-   - Disable: `--no-tail-n-trim`
+
+- Disable: `--no-tail-n-trim`
 
 ### Max N Filtration (MaxNFilter)
 
@@ -131,6 +122,7 @@ Discard a read pair if the number of N in one read is greater than a certain amo
 ### Length Filtration (LengthFilter)
 
 Filter read pair length in a range.
+
 - Read length range: `--length-range 50:500` (default: 50:500)
 
 - Disable: `--no-length-filtration`
@@ -142,6 +134,16 @@ Discard reads with low complexity. Complexity is the percentage of base that is 
 - Enable: `--enable-complexity-filtration` (default: disabled)
 
 - Complexity threshold: `--min-complexity 0.3` (default: 0.3)
+
+### Remove PCR duplicates
+
+Only write unique sequences (dedup). Paired reads are only considered identical if both reads are duplicates to both reads in a previous pair. 
+
+> Dedup uses LARGE memory to store all unique sequences. 
+
+- Enable: `--pcr-dedup`.
+
+- Also write a count table of PCR duplicates: `--pcr-dedup-count`.
 
 ### Parallel computing
 

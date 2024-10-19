@@ -74,7 +74,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
 
     #================== Main function and common variables ====================#
-
+    dup_dict = Dict{LongDNA{4}, DupCount}()
+    dup_dict_lock = ReentrantLock()
 
     #======= Check identifier (not applicable in single end)=======#
     CheckIdentifier = nothing
@@ -154,6 +155,21 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         end
     end : nothing
 
+    #======= PCR dedup =======#
+    PCRDedup = do_pcr_dedup ? quote
+        lock($dup_dict_lock)
+        dup_count = get($dup_dict, r1.seq, nothing)
+        if isnothing(dup_count)  # unique
+            new_key = copy(r1.seq)
+            new_val = DupCount(1, String(copy(r1.id)))
+            $dup_dict[new_key] = new_val
+            unlock($dup_dict_lock)
+        else # dup
+            unlock($dup_dict_lock)
+            @atomic dup_count.count += 1
+            is_good = false; @goto stop_read_processing # return false
+        end
+    end : nothing
 
     #======= Quality trimming =======#
     QualityTrim = do_quality_trimming ? quote
@@ -175,7 +191,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
     ReadProcess = quote end
     steps = OrderedDict{String, Vector{Union{Nothing,Expr}}}(
-        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter, PCRDedup],
         "CheckIdentifier" => [CheckIdentifier],
         "PolyX" => [PolyG, PolyT, PolyA, PolyC],
         "PolyG" => [PolyG],
@@ -194,7 +210,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         "MaxNFilter" => [MaxNFilter],
         "LengthFilter" => [LengthFilter],
         "ComplexityFilter" => [ComplexityFilter],
-        "DoNothing" => [nothing]
+        "PCRDedup" => [PCRDedup]
     )
 
     for step in args["order"]
@@ -219,7 +235,6 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         end
     end
 
-    
     # processing_reads_threads! without dedup
     @eval function processing_reads_threads!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int)
         if length(isgoods) != n_reads
@@ -240,32 +255,6 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             end
         end
     end
-
-    # processing_reads_threads! with dedup
-    @eval function processing_reads_threads!(r1s::Vector{FqRecord}, isgoods::Vector{Bool}, n_reads::Int, dup_dict::Dict{LongSequence{DNAAlphabet{4}}, DupCount})
-        if length(isgoods) != n_reads
-            resize!(isgoods, n_reads)
-        end
-        fill!(isgoods, true)
-
-        n_dup = pcr_dedup(dup_dict, r1s, isgoods, n_reads)
-
-        # split reads to N reads per batch
-        Threads.@threads :static for reads_start in 1:512:n_reads
-            reads_end = min(reads_start + 511, n_reads)
-            reads_range = reads_start:reads_end
-            thread_id = Threads.threadid()
-    
-            for i in reads_range
-                r1 = r1s[i]
-                is_good = true
-                $ReadProcess
-                @label stop_read_processing
-                @inbounds isgoods[i] = is_good
-            end
-        end
-        n_dup
-    end
     
     in1bytes = Vector{UInt8}(undef, max_chunk_size)
 
@@ -279,8 +268,6 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     isgoods_odd = Vector{Bool}()
 
     outr1s = Vector{Vector{UInt8}}()
-
-    dup_dict = Dict{LongSequence{DNAAlphabet{4}}, DupCount}()
 
     time_program_initializing = time() - time_program_initializing
 
@@ -452,9 +439,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
 
             isgoods = nbatch % 2 == 0 ? isgoods_even : isgoods_odd  # write task is still using the other one! 
             
-            if do_pcr_dedup
-                n_dup = Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads, dup_dict)
-                
+            if do_pcr_dedup && nbatch == 1
                 # size hint estimate
                 chunk_size1, chunk_size2, uncompressed_size1, uncompressed_size2 = chunk_sizes(file1, file1, max_chunk_size)
 
@@ -470,16 +455,12 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
                     uncompressed_size = uncompressed_size1
                 end
 
-                if nbatch == 1
-                    n_uniq = n_reads - n_dup
-                    processed_rate = length(in1bytes) / uncompressed_size
-                    n_uniq_all = round(Int, n_uniq / processed_rate * 1.2)
-                    sizehint!(dup_dict, n_uniq_all)
-                end
-            else
-                Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
-
+                processed_rate = length(in1bytes) / uncompressed_size
+                estimated_dict_size = round(Int, n_reads / processed_rate * 1.2)
+                sizehint!(dup_dict, estimated_dict_size)
             end
+
+            Base.invokelatest(processing_reads_threads!, r1s, isgoods, n_reads)
 
             isgoods_in_range = view(isgoods, 1:n_reads)
             task_sum = Threads.@spawn sum(isgoods_in_range)
@@ -494,13 +475,9 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             total_n_goods += n_goods
             total_n_reads += n_reads
 
-            if do_pcr_dedup
-                total_n_pcr_dup += n_dup
-                @info "Cycle $nbatch: read $n_reads/$total_n_reads; wrote $n_goods/$total_n_goods; skip $n_dup/$total_n_pcr_dup PCR duplicates (copied $ncopied/$total_read_copied_in_loading)"
-            else
-                @info "Cycle $nbatch: read $n_reads/$total_n_reads; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
 
-            end
+            @info "Cycle $nbatch: read $n_reads/$total_n_reads; wrote $n_goods/$total_n_goods; (copied $ncopied/$total_read_copied_in_loading)"
+
             return task_r1s_unbox, task_write1
         end
 
@@ -529,9 +506,13 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         close(iolog)
 
         #================== Dedup stats ====================#
-        if do_pcr_dedup && do_pcr_dedup_count
-            out_pcr_dedup_count = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.pcr_dedup_count.tsv", count=1))
-            write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
+        if do_pcr_dedup 
+            if do_pcr_dedup_count
+                out_pcr_dedup_count = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.pcr_dedup_count.tsv", count=1))
+                dup_count = write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
+            else
+                dup_count = get_dup_count(dup_dict)
+            end
         end
 
         #================== JSON log ====================#
@@ -558,18 +539,12 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             "read-processing-time" => time_read_processing,
             "post-processing-time"=> time_post_processing
         )
-
+        logjson["trimming-details"] = OrderedDict(
+            "good-reads" => total_n_goods,
+            "total-reads" => total_n_reads,
+        )
         if do_pcr_dedup
-            logjson["trimming-details"] = OrderedDict(
-                "good-reads" => total_n_goods,
-                "pcr-deplicates" => total_n_pcr_dup,
-                "total-reads" => total_n_reads,
-            )
-        else
-            logjson["trimming-details"] = OrderedDict(
-                "good-reads" => total_n_goods,
-                "total-reads" => total_n_reads,
-            )
+            logjson["trimming-details"]["pcr-duplicate-pairs"] = dup_count
         end
 
         iologjson = open(outjson, "w+")
