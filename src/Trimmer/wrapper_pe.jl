@@ -206,12 +206,20 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
         dup_count = get($dup_dict, hash_key, nothing)
         
         if isnothing(dup_count)  # unique
-            new_val = DupCount(1, String(copy(r1.id)))
+            new_val = DupCount(1, String(r1.seq) * "__" * String(r2.seq))
+            # new_val = DupCount(1, String(copy(r1.id)))
             $dup_dict[hash_key] = new_val
             unlock($dup_dict_lock)
         else # dup
             unlock($dup_dict_lock)
             @atomic dup_count.count += 1
+            this = String(r1.seq) * "__" * String(r2.seq) 
+            if this != dup_count.id
+                s1, s2 = split(dup_count.id, "__")
+                if s1[1:end-1] != String(r1.seq)[1:end-1] || s2[1:end-1] != String(r2.seq)[1:end-1]
+                    @warn "conflict" this that = dup_count.id
+                end
+            end
             is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
