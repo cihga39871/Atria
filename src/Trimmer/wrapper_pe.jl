@@ -85,7 +85,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     r1_seq_rc_threads = [LongDNA{4}() for _ in 1:nthread]
     r2_seq_rc_threads = [LongDNA{4}() for _ in 1:nthread]
     
-    dup_dict = Dict{Tuple{LongDNA{4}, LongDNA{4}}, DupCount}()
+    dup_dict = Dict{Vector{UInt64}, DupCount}()
     dup_dict_lock = ReentrantLock()
 
     #======= Check identifier =======#
@@ -201,13 +201,13 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     #======= PCR dedup =======#
     PCRDedup = do_pcr_dedup ? quote
+        hash_key = hash_dna(r1.seq, r2.seq)
         lock($dup_dict_lock)
-        dup_count = get($dup_dict, (r1.seq, r2.seq), nothing)
+        dup_count = get($dup_dict, hash_key, nothing)
         
         if isnothing(dup_count)  # unique
-            new_key = (copy(r1.seq), copy(r2.seq))
             new_val = DupCount(1, String(copy(r1.id)))
-            $dup_dict[new_key] = new_val
+            $dup_dict[hash_key] = new_val
             unlock($dup_dict_lock)
         else # dup
             unlock($dup_dict_lock)

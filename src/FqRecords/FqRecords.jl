@@ -64,6 +64,7 @@ adapter_match_pe,
 PEOptions, AdapterPERes
 
 include("pcr_dedup.jl")
-export DupCount, pcr_dedup, write_pcr_dedup_count
+export DupCount, get_dup_count, pcr_dedup, write_pcr_dedup_count,
+hash_dna
 
 end

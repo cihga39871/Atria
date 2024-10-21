@@ -28,7 +28,7 @@ end
 @inline function safe_copyto!(dest::LongDNA{4}, src::Vector{UInt8}, src_offset, N)
     resize!(dest, N)
     # BioSequences.encode_chunks!(dest, 1, src, src_offset, N)
-    copyto!(dest, 1, src, src_offset, N)
+    @inbounds copyto!(dest, 1, src, src_offset, N)
 end
 @inline function safe_copyto!(dest::LongDNA{4}, src::Vector{UInt8})
     copy!(dest, src)
