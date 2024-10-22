@@ -1,7 +1,7 @@
 # Atria
 ![](https://img.shields.io/github/downloads/cihga39871/Atria/total)
  
-Atria is designed to trim adapters and low-quality bases of next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree.
+Atria is designed to trim adapters and low-quality bases of next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree. It can also remove duplicated sequences due to PCR amplification.
 
 If you use Atria, please cite the paper:
 > Jiacheng Chuan, Aiguo Zhou, Lawrence Richard Hale, Miao He, Xiang Li, Atria: an ultra-fast and accurate trimmer for adapter and quality trimming, Gigabyte, 1, 2021  https://doi.org/10.46471/gigabyte.31
@@ -18,6 +18,7 @@ If you use Atria, please cite the paper:
 - Filtering reads by the number of N bases
 - Filtering reads by length
 - Filtering reads by read complexity
+- Remove PCR duplicates (dedup)
 
 ## Contents
 
