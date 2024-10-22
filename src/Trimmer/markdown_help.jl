@@ -123,7 +123,7 @@ Discard a read pair if the number of N in one read is greater than a certain amo
 
 Filter read pair length in a range.
 
-- Read length range: `--length-range 50:500` (default: 50:500)
+- Read length range: `--length-range 30:999999` (default: 30:999999)
 
 - Disable: `--no-length-filtration`
 
