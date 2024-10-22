@@ -38,10 +38,12 @@ Order of trimming and filtration processing methods. Unlisted process will not b
    - PolyC
    - LengthFilter
    - AdapterTrim
-   - HardClip3EndR1
-   - HardClip3EndR2
-   - HardClip5EndR1
-   - HardClip5EndR2
+   - HardClipEndR1
+   - HardClipEndR2
+   - HardClipAfterR1
+   - HardClipAfterR2
+   - HardClipFrontR1
+   - HardClipFrontR2
    - QualityTrim
    - TailNTrim
    - MaxNFilter
@@ -77,7 +79,15 @@ The overlapped regions of read pairs are checked and corrected. **It is availabl
 
 - Disable: `--no-consensus`
 
-### Hard Clip 3' End (HardClip3EndR1 / HardClip3EndR2)
+### Hard Clip End (HardClipEndR1 / HardClipEndR2)
+
+Remove the last INT bases from 3' end (tail).
+
+- Number of bases to keep in read 1: `-z INT` or `--clip3-r1 INT` (default: disabled)
+
+- Number of bases to keep in read 2: `-Z INT` or `--clip3-r2 INT` (default: disabled)
+
+### Hard Clip After N Bases (HardClipAfterR1 / HardClipAfterR2)
 
 Resize reads to a fixed length by discarding extra bases in 3' end (tail).
 
@@ -85,7 +95,7 @@ Resize reads to a fixed length by discarding extra bases in 3' end (tail).
 
 - Number of bases to keep in read 2: `-B INT` or `--clip-after-r2 INT` (default: disabled)
 
-### Hard Clip 5' End (HardClip5EndR1 / HardClip5EndR2)
+### Hard Clip Front (HardClipFrontR1 / HardClipFrontR2)
 
 Remove the first INT bases from 5' end (front).
 

@@ -61,7 +61,7 @@ end
     return
 end
 
-@inline function tail_N_trim!(r::FqRecord)::Nothing
+@inline function tail_N_trim!(r::FqRecord, stats::TrimStats)::Nothing
     nbase = length(r.seq::LongDNA{4})::Int64
     # trim end
     n = nbase::Int64
@@ -69,6 +69,7 @@ end
         (r.seq::LongDNA{4})[n]::DNA == DNA_N ? n -= 1 : break
     end
     if n::Int64 != nbase::Int64
+        @atomic stats.tail_N_trim += 1
         resize!(r.seq::LongDNA{4}, n::Int64)
         resize!(r.qual, n)
         resize!(r.prob, n)
@@ -76,7 +77,7 @@ end
     return
 end
 
-@inline function tail_low_qual_trim!(r::FqRecord)::Nothing
+@inline function tail_low_qual_trim!(r::FqRecord, stats::TrimStats)::Nothing
     nbase = length(r.seq::LongDNA{4})::Int64
     # trim end
     n = nbase::Int64
@@ -84,6 +85,7 @@ end
         (r.prob)[n] < 0.3 ? n -= 1 : break  # 0.3: phred Q < 1.5
     end
     if n::Int64 != nbase::Int64
+        @atomic stats.tail_low_qual_trim += 1
         resize!(r.seq::LongDNA{4}, n::Int64)
         resize!(r.qual, n)
         resize!(r.prob, n)

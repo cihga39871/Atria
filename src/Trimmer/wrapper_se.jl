@@ -29,8 +29,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     # N
     max_N                    =  args["max-n"                 ]
     # adapter
-    adapter1s                 = args["adapter1"]
-    adapter1_seqheadsets      = SeqHeadSet.(adapter1s)
+    adapter1s                = args["adapter1"]
+    adapter1_seqheadsets     = SeqHeadSet.(adapter1s)
     # NOTE: TruncSeq has some unknown accuracy problems.
     kmer_tolerance           = args["kmer-tolerance"          ]
     kmer_tolerance_consensus = args["kmer-tolerance-consensus"]
@@ -38,6 +38,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     tail_length              = args["tail-length"             ]
     # consensus
     # hard clip
+    nclip_end          = args["clip3-r1"     ]
     nclip_after        = args["clip-after-r1"]
     nclip_front        = args["clip5-r1"     ]
     # quality
@@ -62,8 +63,9 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     do_length_filtration     = !args["no-length-filtration"]
     do_adapter_trimming      = !args["no-adapter-trim"     ]
     do_consensus_calling     =  false
-    do_hard_clip_3_end       =  nclip_after > 0
-    do_hard_clip_5_end       =  nclip_front > 0
+    do_hard_clip_end         =  nclip_end > 0
+    do_hard_clip_after       =  nclip_after > 0
+    do_hard_clip_front       =  nclip_front > 0
     do_quality_trimming      = !args["no-quality-trim"     ]
     do_tail_n_trimming       = !args["no-tail-n-trim"      ]
     do_tail_low_qual_trimming=  do_polyG || do_polyT || do_polyA || do_polyC || do_adapter_trimming
@@ -77,6 +79,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     #================== Main function and common variables ====================#
     dup_dict = Dict{Vector{UInt64}, DupCount}()
     dup_dict_lock = ReentrantLock()
+    
+    stats_r1 = TrimStats()
 
     if do_hash_collision
         error("Dev: Hash Collision not supported for single read.")
@@ -90,6 +94,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_G, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
+            @atomic $stats_r1.polyG += 1
             tail_trim!(r1, polyX_idx)
         end
     end : nothing
@@ -98,6 +103,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_T, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
+            @atomic $stats_r1.polyT += 1
             tail_trim!(r1, polyX_idx)
         end
     end : nothing
@@ -106,6 +112,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_A, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
+            @atomic $stats_r1.polyA += 1
             tail_trim!(r1, polyX_idx)
         end
     end : nothing
@@ -114,6 +121,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         polyX_idx, polyX_length = polyX_tail_scan(DNA_C, r1, $poly_mismatch_per_16mer)
         if polyX_length >= $min_poly_length
             polyX_idx -= 1
+            @atomic $stats_r1.polyC += 1
             tail_trim!(r1, polyX_idx)
         end
     end : nothing
@@ -121,33 +129,42 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     #======= Complexity =======#
     ComplexityFilter = do_complexity_filtration ? quote
         if seq_complexity(r1) < $min_complexity
+            @atomic $stats_r1.complexity_filtered += 1
             is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
 
     #======= Hard clips =======#
-    HardClip3EndR1 = do_hard_clip_3_end ? quote
-        tail_trim!(r1::FqRecord, $nclip_after)
+    HardClipEndR1 = do_hard_clip_end ? quote
+        tail_trim!(r1::FqRecord, length(r1.seq) - $nclip_end)
     end : nothing
-    HardClip3EndR2 = nothing
+    HardClipEndR2 = nothing
 
-    HardClip5EndR1 = do_hard_clip_5_end ? quote
+    HardClipAfterR1 = do_hard_clip_after ? quote
+        if length(r1.seq) > $nclip_after    
+            @atomic $stats_r1.hard_clip_after += 1
+            tail_trim!(r1::FqRecord, $nclip_after)
+        end
+    end : nothing
+    HardClipAfterR2 = nothing
+
+    HardClipFrontR1 = do_hard_clip_front ? quote
         front_trim!(r1::FqRecord, $nclip_front::Int64)
     end : nothing
-    HardClip5EndR2 = nothing
+    HardClipFrontR2 = nothing
 
     #======= Trim N from the tail =======#
     TailNTrim = do_tail_low_qual_trimming ? quote
-        tail_low_qual_trim!(r1::FqRecord)
+        tail_low_qual_trim!(r1::FqRecord, $stats_r1)
     end : do_tail_n_trimming ? quote
-        tail_N_trim!(r1::FqRecord)
+        tail_N_trim!(r1::FqRecord, $stats_r1)
     end : nothing
 
 
     #======= If reads are too short, remove =======#
     LengthFilter = do_length_filtration ? quote
         if !isinreadlength!(r1::FqRecord, $length_range)
-            # global count_reads_pair_invalid_length[thread_id] += 1
+            @atomic $stats_r1.length_filtered += 1            
             is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
@@ -156,6 +173,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     #======= If reads have so many N, remove =======#
     MaxNFilter = do_max_n_filtration ? quote
         if !isnotmuchN!(r1::FqRecord, $max_N)
+            @atomic $stats_r1.max_n_filtered += 1            
             is_good = false; @goto stop_read_processing # return false
         end
     end : nothing
@@ -197,7 +215,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     QualityTrim = do_quality_trimming ? quote
         quality_index1 = qualitymatch(r1::FqRecord, $quality_single::UInt8, $quality_threshold::UInt64, $quality_kmer::Int64)
         if quality_index1 != -1  # -1 means no need to do quality trimming
-            # global count_r1_quality_trimming[thread_id] += 1
+            @atomic $stats_r1.quality_trim += 1
             tail_trim!(r1::FqRecord, quality_index1::Int64)
         end
     end : nothing
@@ -207,13 +225,14 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     AdapterTrim = do_adapter_trimming ? quote
         nremain = adapter_match_se($adapter1_seqheadsets, r1, $kmer_tolerance, $trim_score)
         if nremain < length(r1.seq)
+            @atomic $stats_r1.adapter_trim += 1
             tail_trim!(r1::FqRecord, nremain)
         end
     end : nothing
 
     ReadProcess = quote end
     steps = OrderedDict{String, Vector{Union{Nothing,Expr}}}(
-        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter, PCRDedup],
+        "DefaultOrder" => [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClipEndR1, HardClipEndR2, HardClipAfterR1, HardClipAfterR2, HardClipFrontR1, HardClipFrontR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter, PCRDedup],
         "CheckIdentifier" => [CheckIdentifier],
         "PolyX" => [PolyG, PolyT, PolyA, PolyC],
         "PolyG" => [PolyG],
@@ -221,12 +240,15 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         "PolyA" => [PolyA],
         "PolyC" => [PolyC],
         "AdapterTrim" => [AdapterTrim],
-        "HardClip3End" => [HardClip3EndR1, HardClip3EndR2],
-        "HardClip3EndR1" => [HardClip3EndR1],
-        "HardClip3EndR2" => [HardClip3EndR2],
-        "HardClip5End" => [HardClip5EndR1, HardClip5EndR2],
-        "HardClip5EndR1" => [HardClip5EndR1],
-        "HardClip5EndR2" => [HardClip5EndR2],
+        "HardClipEnd"     => [HardClipEndR1, HardClipEndR2],
+        "HardClipEndR1"   => [HardClipEndR1],
+        "HardClipEndR2"   => [HardClipEndR2],
+        "HardClipAfter" => [HardClipAfterR1, HardClipAfterR2],
+        "HardClipAfterR1" => [HardClipAfterR1],
+        "HardClipAfterR2" => [HardClipAfterR2],
+        "HardClipFront" => [HardClipFrontR1, HardClipFrontR2],
+        "HardClipFrontR1" => [HardClipFrontR1],
+        "HardClipFrontR2" => [HardClipFrontR2],
         "QualityTrim" => [QualityTrim],
         "TailNTrim" => [TailNTrim],
         "MaxNFilter" => [MaxNFilter],
@@ -372,8 +394,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             tail_polyC_trimming = do_polyC,
             adapter_trimming = do_adapter_trimming,
             consensus_calling = do_consensus_calling,
-            hard_clip_3_end = do_hard_clip_3_end,
-            hard_clip_5_end = do_hard_clip_5_end,
+            hard_clip_3_end = do_hard_clip_after,
+            hard_clip_5_end = do_hard_clip_front,
             quality_trimming = do_quality_trimming,
             tail_N_trimming = do_tail_n_trimming,
             max_N_filtering = do_max_n_filtration,
@@ -391,8 +413,8 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
                 tail_polyC_trimming = do_polyC,
                 adapter_trimming = do_adapter_trimming,
                 consensus_calling = do_consensus_calling,
-                hard_clip_3_end = do_hard_clip_3_end,
-                hard_clip_5_end = do_hard_clip_5_end,
+                hard_clip_3_end = do_hard_clip_after,
+                hard_clip_5_end = do_hard_clip_front,
                 quality_trimming = do_quality_trimming,
                 tail_N_trimming = do_tail_n_trimming,
                 max_N_filtering = do_max_n_filtration,
@@ -409,6 +431,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         # clear common variables
         empty!(r1s)
         empty!(dup_dict)
+        empty!(stats_r1)
 
         #=
         global n_reads
@@ -531,9 +554,9 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
         if do_pcr_dedup 
             if do_pcr_dedup_count
                 out_pcr_dedup_count = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.pcr_dedup_count.tsv", count=1))
-                dup_count = write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
+                @atomic stats_r1.pcr_dedup_removed = write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
             else
-                dup_count = get_dup_count(dup_dict)
+                @atomic stats_r1.pcr_dedup_removed = get_dup_count(dup_dict)
             end
         end
 
@@ -565,9 +588,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
             "good-reads" => total_n_goods,
             "total-reads" => total_n_reads,
         )
-        if do_pcr_dedup
-            logjson["trimming-details"]["pcr-duplicate-pairs"] = dup_count
-        end
+        logjson["stats"] = stats_r1
 
         iologjson = open(outjson, "w+")
         JSON.print(iologjson, sort!(logjson), 4)

@@ -269,6 +269,6 @@ end
             is_concensused = false
         end
     end
-    return nothing
+    return res.need_trim
     # return res.need_trim, r1_insert_size, r2_insert_size, is_concensused
 end

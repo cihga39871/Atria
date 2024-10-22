@@ -42,6 +42,8 @@ using ..BioBits.BioSymbols
 using ..BioBits.BioSequences
 
 include("interface.jl")
+export TrimStats
+
 include("quality.jl")
 export compute_prob_and_score!
 

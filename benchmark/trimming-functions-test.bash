@@ -6,6 +6,59 @@ then
     time=/export/home/CFIA-ACIA/chuanj/.local/bin/time
 fi
 
+
+run_atria_onlytrim_path(){
+    local num_threads=1
+	local atria_app=$2
+    if [[ $1 ]]; then
+        num_threads=$1
+    fi
+    $time -v "$atria_app" --no-consensus \
+        -r $r1 -R $r2 \
+        -o Atria-onlytrim-`"$atria_app" --version` \
+        --no-tail-n-trim --max-n=-1 --no-quality-trim --no-length-filtration \
+        --adapter1 $a1 --adapter2 $a2 --threads $num_threads
+}
+run_atria_normal_path(){
+    local num_threads=1
+	local atria_app=$2
+    if [[ $1 ]]; then
+        num_threads=$1
+    fi
+    $time -v "$atria_app" --no-consensus \
+        -r $r1 -R $r2 \
+        -o Atria-normal-`"$atria_app" --version` \
+        --adapter1 $a1 --adapter2 $a2 --threads $num_threads
+}
+
+run_atria_all_path(){
+    local num_threads=1
+	local atria_app=$2
+    if [[ $1 ]]; then
+        num_threads=$1
+    fi
+    $time -v "$atria_app" --no-consensus \
+        -r $r1 -R $r2 \
+        -o Atria-all-`"$atria_app" --version` --pcr-dedup \
+        --adapter1 $a1 --adapter2 $a2 --threads $num_threads
+}
+
+wrapper_test_20241022(){
+
+	run_atria_onlytrim_path 8 /home/jc/projects/Atria/atria-4.0.2/bin/atria 2> log.onlytrim.4.0.2
+	run_atria_onlytrim_path 8 /home/jc/projects/Atria/atria-4.1.0/bin/atria 2> log.onlytrim.4.1.0
+
+	run_atria_normal_path 8 /home/jc/projects/Atria/atria-4.0.2/bin/atria 2> log.normal.4.0.2
+	run_atria_normal_path 8 /home/jc/projects/Atria/atria-4.1.0/bin/atria 2> log.normal.4.1.0
+	run_atria_all_path 8 /home/jc/projects/Atria/atria-4.1.0/bin/atria 2> log.all.4.1.0
+
+
+	mapping_bowtie2 Atria-normal-v4.0.2/*fastq.gz
+	mapping_bowtie2 Atria-normal-v4.1.0/*fastq.gz
+
+
+}
+
 atria-trim-arg(){
 	kmer_tolerance=$1
 	diff1=$2  # pe-adapter-diff

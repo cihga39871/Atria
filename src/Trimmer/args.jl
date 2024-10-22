@@ -8,7 +8,7 @@ function parsing_args(args::Vector; exit_after_help = true)
         ----------
 
         Process names for --order | -O:
-            DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter, PCRDedup],
+            DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClipEndR1, HardClipEndR2, HardClipAfterR1, HardClipAfterR2, HardClipFrontR1, HardClipFrontR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter, PCRDedup],
             CheckIdentifier ,
             PolyX           = [PolyG, PolyT, PolyA, PolyC],
             PolyG           ,
@@ -16,18 +16,21 @@ function parsing_args(args::Vector; exit_after_help = true)
             PolyA           ,
             PolyC           ,
             AdapterTrim     ,
-            HardClip3End    = [HardClip3EndR1, HardClip3EndR2],
-            HardClip3EndR1  ,
-            HardClip3EndR2  ,
-            HardClip5End    = [HardClip5EndR1, HardClip5EndR2],
-            HardClip5EndR1  ,
-            HardClip5EndR2  ,
+            HardClipEnd     = [HardClipEndR1, HardClipEndR2],
+            HardClipEndR1   ,
+            HardClipEndR2   ,
+            HardClipAfter   = [HardClipAfterR1, HardClipAfterR2],
+            HardClipAfterR1 ,
+            HardClipAfterR2 ,
+            HardClipFront   = [HardClipFrontR1, HardClipFrontR2],
+            HardClipFrontR1 ,
+            HardClipFrontR2 ,
             QualityTrim     ,
             TailNTrim       ,
             MaxNFilter      ,
             LengthFilter    ,
             ComplexityFilter,
-            PCRDedup       .
+            PCRDedup        .
 
         ----------
 
@@ -223,6 +226,16 @@ function parsing_args(args::Vector; exit_after_help = true)
 
     add_arg_group!(settings, "hard clipping: trim a fixed length")
     @add_arg_table! settings begin
+        "--clip3-r1", "-z"
+            help = "remove the last INT bases from 3' end of R1."
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
+        "--clip3-r2", "-Z"
+            help = "remove the last INT bases from 3' end of R2."
+            default = 0
+            metavar = "INT"
+            arg_type = Int64
         "--clip-after-r1", "-b"
             help = "hard clip the 3' tails of R1 to contain only INT bases. 0 to disable."
             default = 0

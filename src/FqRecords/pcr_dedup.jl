@@ -79,30 +79,23 @@ function hash_dna(s1::LongDNA{4})
     global ALPHABET_2DNA
 
     len = length(s1)
-    data = zeros(UInt64, 2 + BioSequences.seq_data_len(DNAAlphabet{2}, len))
+    data = zeros(UInt64, 1 + BioSequences.seq_data_len(DNAAlphabet{2}, len))
     
     count_bits = 0
     count_c = 0
-    count_t = 0
-    # count_ag = 0
     for x in s1.data
         count_bits += count_ones(x)
         count_c += count_ones(x & 0x2222222222222222)
-        count_t += count_ones(x & 0x8888888888888888)
-        # count_ag += count_ones(x & 0x5555555555555555)
     end
 
     dt_32 = reinterpret(reshape, UInt32, data)
     @inbounds dt_32[1] = UInt32(count_bits)
     @inbounds dt_32[2] = UInt32(count_c)
-    @inbounds dt_32[3] = UInt32(count_t)
-    @inbounds dt_32[4] = UInt32(len)
-
 
     dt_re = reinterpret(reshape, UInt8, data)
 
     s1_re = reinterpret(reshape, UInt8, s1.data)
-    dt_re_offset = 16
+    dt_re_offset = 8
 
     double_dna_size = cld(len, 4)
     @inbounds @simd for i in 1:double_dna_size
@@ -121,35 +114,27 @@ function hash_dna(s1::LongDNA{4}, s2::LongDNA{4})
     len2 = length(s2)
     data_len1 = BioSequences.seq_data_len(DNAAlphabet{2}, len1)
     data_len2 = BioSequences.seq_data_len(DNAAlphabet{2}, len2)
-    data = zeros(UInt64, 2 + data_len1 + data_len2)
+    data = zeros(UInt64, 1 + data_len1 + data_len2)
     
     count_bits = 0
     count_c = 0
-    count_t = 0
-    # count_ag = 0
     for x in s1.data
         count_bits += count_ones(x)
         count_c += count_ones(x & 0x2222222222222222)
-        count_t += count_ones(x & 0x8888888888888888)
-        # count_ag += count_ones(x & 0x5555555555555555)
     end
     for x in s2.data
         count_bits += count_ones(x)
         count_c += count_ones(x & 0x2222222222222222)
-        count_t += count_ones(x & 0x8888888888888888)
-        # count_ag += count_ones(x & 0x5555555555555555)
     end
 
     dt_32 = reinterpret(reshape, UInt32, data)
     @inbounds dt_32[1] = UInt32(count_bits)
     @inbounds dt_32[2] = UInt32(count_c)
-    @inbounds dt_32[3] = UInt32(count_t)
-    @inbounds dt_32[4] = UInt32(len1 + len2)
 
     dt_re = reinterpret(reshape, UInt8, data)
 
     s1_re = reinterpret(reshape, UInt8, s1.data)
-    dt_re_offset = 16
+    dt_re_offset = 8
 
     double_dna_size1 = cld(len1, 4)
     @inbounds for i in 1:double_dna_size1
