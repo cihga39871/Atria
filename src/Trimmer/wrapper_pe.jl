@@ -60,6 +60,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     do_check_identifier      =  args["check-identifier"    ]
     do_pcr_dedup             =  args["pcr-dedup"           ]
     do_pcr_dedup_count       =  args["pcr-dedup-count"     ]
+    do_hash_collision        =  get(ENV, "ATRIA_HASH_COLLISION", "") in ("1", "true", "True", "T") ? true : false
     do_polyG                 =  args["polyG"               ]
     do_polyT                 =  args["polyT"               ]
     do_polyA                 =  args["polyA"               ]
@@ -87,6 +88,7 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     
     dup_dict = Dict{Vector{UInt64}, DupCount}()
     dup_dict_lock = ReentrantLock()
+    hash_collision_dict = Dict{Vector{UInt64}, Set{Tuple{LongDNA{4},LongDNA{4}}}}()
 
     #======= Check identifier =======#
     CheckIdentifier = do_check_identifier ? quote
@@ -200,29 +202,55 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
 
     #======= PCR dedup =======#
-    PCRDedup = do_pcr_dedup ? quote
-        hash_key = hash_dna(r1.seq, r2.seq)
-        lock($dup_dict_lock)
-        dup_count = get($dup_dict, hash_key, nothing)
-        
-        if isnothing(dup_count)  # unique
-            new_val = DupCount(1, String(r1.seq) * "__" * String(r2.seq))
-            # new_val = DupCount(1, String(copy(r1.id)))
-            $dup_dict[hash_key] = new_val
-            unlock($dup_dict_lock)
-        else # dup
-            unlock($dup_dict_lock)
-            @atomic dup_count.count += 1
-            this = String(r1.seq) * "__" * String(r2.seq) 
-            if this != dup_count.id
-                s1, s2 = split(dup_count.id, "__")
-                if s1[1:end-1] != String(r1.seq)[1:end-1] || s2[1:end-1] != String(r2.seq)[1:end-1]
-                    @warn "conflict" this that = dup_count.id
-                end
+    PCRDedup = if do_pcr_dedup && do_hash_collision
+        quote
+            hash_key = hash_dna(r1.seq, r2.seq)
+            lock($dup_dict_lock)
+            dup_count = get!($dup_dict, hash_key) do
+                DupCount(0)
             end
-            is_good = false; @goto stop_read_processing # return false
+            collision_set = get!($hash_collision_dict, hash_key) do 
+                Set{Tuple{LongDNA{4},LongDNA{4}}}()
+            end
+            push!(collision_set, (copy(r1.seq), copy(r2.seq)))
+            unlock($dup_dict_lock)
+            
+            @atomic dup_count.count += 1
+            if dup_count.count > 1  # dup, not unique
+                is_good = false; @goto stop_read_processing # return false
+            end
         end
-    end : nothing
+    elseif do_pcr_dedup && do_pcr_dedup_count
+        quote
+            hash_key = hash_dna(r1.seq, r2.seq)
+            lock($dup_dict_lock)
+            dup_count = get!($dup_dict, hash_key) do
+                DupCount(0, String(copy(r1.id)))
+            end
+            unlock($dup_dict_lock)
+            
+            @atomic dup_count.count += 1
+            if dup_count.count > 1  # dup, not unique
+                is_good = false; @goto stop_read_processing # return false
+            end
+        end
+    elseif do_pcr_dedup
+        quote
+            hash_key = hash_dna(r1.seq, r2.seq)
+            lock($dup_dict_lock)
+            dup_count = get!($dup_dict, hash_key) do
+                DupCount(0)
+            end
+            unlock($dup_dict_lock)
+            
+            @atomic dup_count.count += 1
+            if dup_count.count > 1  # dup, not unique
+                is_good = false; @goto stop_read_processing # return false
+            end
+        end
+    else
+        nothing
+    end
 
     #======= Quality trimming =======#
     QualityTrim = do_quality_trimming ? quote
@@ -614,6 +642,10 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                 dup_count = write_pcr_dedup_count(out_pcr_dedup_count, dup_dict)
             else
                 dup_count = get_dup_count(dup_dict)
+            end
+            if do_hash_collision
+                out_pcr_hash_collision = joinpath(outdir, replace(basename(file1), r"fastq$|fq$|[^.]*(\.gz)?$"i => "atria.pcr_hash_collision.tsv", count=1))
+                write_pcr_hash_collision(out_pcr_hash_collision, hash_collision_dict)
             end
         end
 

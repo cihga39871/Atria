@@ -200,7 +200,7 @@ end
     n_mismatch = 0
     allowed_mismatch = allowed_mismatch_per_16mer
     while n >= until
-        if @inbounds(b[n]) === a
+        if @inbounds(b[n]) & a == a  # ambiguous DNA is true
             best_idx = n
         else
             n_mismatch += 1

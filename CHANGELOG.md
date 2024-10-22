@@ -7,8 +7,8 @@
 
 ## v4.1.0
 
-- Feature: PCRDedup: remove PCR duplicates from fastq files. The entire paired sequence is compared.
-- TODO: Need fix `polyX_tail_scan`.
+- Feature: PCRDedup: remove PCR duplicates from fastq files. The entire paired sequence is compared and hashed. This method require large memory because it stores hashes of reads. To enable, use `--pcr-dedup`.
+- Fix: `polyX_tail_scan` algorithm now is more precise, and tailing Ns also count.
 
 ## v4.0.3
 

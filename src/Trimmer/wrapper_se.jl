@@ -54,6 +54,7 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     do_check_identifier      =  false
     do_pcr_dedup             =  args["pcr-dedup"           ]
     do_pcr_dedup_count       =  args["pcr-dedup-count"     ]
+    do_hash_collision        =  get(ENV, "ATRIA_HASH_COLLISION", "") in ("1", "true", "True", "T") ? true : false
     do_polyG                 =  args["polyG"               ]
     do_polyT                 =  args["polyT"               ]
     do_polyA                 =  args["polyA"               ]
@@ -76,6 +77,10 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     #================== Main function and common variables ====================#
     dup_dict = Dict{Vector{UInt64}, DupCount}()
     dup_dict_lock = ReentrantLock()
+
+    if do_hash_collision
+        error("Dev: Hash Collision not supported for single read.")
+    end
 
     #======= Check identifier (not applicable in single end)=======#
     CheckIdentifier = nothing
@@ -156,21 +161,37 @@ function julia_wrapper_atria_se(ARGS::Vector{String}; exit_after_help = true)
     end : nothing
 
     #======= PCR dedup =======#
-    PCRDedup = do_pcr_dedup ? quote
-        hash_key = hash_dna(r1.seq, r2.seq)
-        lock($dup_dict_lock)
-        dup_count = get($dup_dict, hash_key, nothing)
-        
-        if isnothing(dup_count)  # unique
-            new_val = DupCount(1, String(copy(r1.id)))
-            $dup_dict[hash_key] = new_val
+    PCRDedup = if do_pcr_dedup && do_pcr_dedup_count
+        quote
+            hash_key = hash_dna(r1.seq)
+            lock($dup_dict_lock)
+            dup_count = get!($dup_dict, hash_key) do
+                DupCount(0, String(copy(r1.id)))
+            end
             unlock($dup_dict_lock)
-        else # dup
-            unlock($dup_dict_lock)
+            
             @atomic dup_count.count += 1
-            is_good = false; @goto stop_read_processing # return false
+            if dup_count.count > 1  # dup, not unique
+                is_good = false; @goto stop_read_processing # return false
+            end
         end
-    end : nothing
+    elseif do_pcr_dedup
+        quote
+            hash_key = hash_dna(r1.seq)
+            lock($dup_dict_lock)
+            dup_count = get!($dup_dict, hash_key) do
+                DupCount(0)
+            end
+            unlock($dup_dict_lock)
+            
+            @atomic dup_count.count += 1
+            if dup_count.count > 1  # dup, not unique
+                is_good = false; @goto stop_read_processing # return false
+            end
+        end
+    else
+        nothing
+    end
 
     #======= Quality trimming =======#
     QualityTrim = do_quality_trimming ? quote

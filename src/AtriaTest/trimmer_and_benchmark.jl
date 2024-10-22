@@ -64,8 +64,13 @@
 
         @info "normal trim - all filters"
 
-        julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "-f", "--log2-chunk-size", "24"])
-        julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "-f", "--stats", "--log2-chunk-size", "24"])
+        julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq",  "--polyG", "--enable-complexity-filtration", "--pcr-dedup", "-f", "--log2-chunk-size", "24"])
+        julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "--polyG", "--enable-complexity-filtration", "--pcr-dedup", "-f", "--stats", "--log2-chunk-size", "24"])
+
+        @info "normal trim - PCR Dedup with counts"
+
+        julia_wrapper_atria_se(["-r", "peReadSimulated.R1.fastq", "-O", "--PCRDedup", "--pcr-dedup", "--pcr-dedup-count", "-f", "--log2-chunk-size", "24"])
+        julia_wrapper_atria_pe(["-r", "peReadSimulated.R1.fastq", "-R", "peReadSimulated.R2.fastq", "-O", "--PCRDedup", "--pcr-dedup", "--pcr-dedup-count", "-f", "--stats", "--log2-chunk-size", "24"])
 
         @info "normal trim - all filters - check ID pair"
 

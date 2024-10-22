@@ -8,7 +8,7 @@ function parsing_args(args::Vector; exit_after_help = true)
         ----------
 
         Process names for --order | -O:
-            DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter],
+            DefaultOrder    = [CheckIdentifier, PolyG, PolyT, PolyA, PolyC, LengthFilter, AdapterTrim, HardClip3EndR1, HardClip3EndR2, HardClip5EndR1, HardClip5EndR2, QualityTrim, TailNTrim, MaxNFilter, LengthFilter, ComplexityFilter, PCRDedup],
             CheckIdentifier ,
             PolyX           = [PolyG, PolyT, PolyA, PolyC],
             PolyG           ,
@@ -27,7 +27,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             MaxNFilter      ,
             LengthFilter    ,
             ComplexityFilter,
-            DoNothing       .
+            PCRDedup       .
 
         ----------
 
@@ -286,7 +286,7 @@ function parsing_args(args::Vector; exit_after_help = true)
             action = :store_true
         "--length-range"
             help = "length range of good reads; format is min:max"
-            default = "50:500"
+            default = "30:999999"
             metavar = "INT:INT"
             arg_type = String
     end

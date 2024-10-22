@@ -4,6 +4,8 @@ mutable struct DupCount
     id::String
 end
 
+const empty_id = ""
+DupCount(count::Int) = DupCount(count, empty_id)
 
 function write_pcr_dedup_count(out_pcr_dedup_count::AbstractString, dup_dict::Dict{Vector{UInt64}, DupCount})
     dup_count = 0
@@ -29,19 +31,19 @@ function get_dup_count(dup_dict::Dict)
     dup_count
 end
 
-function dna_2bit(a::DNA)
-    if a == DNA_A
-        return 0x00
-    elseif a == T
-        return 0x11
-    elseif a == C
-        return 0x01
-    elseif a == G
-        return 0x10
-    else
-        return 0x01  # unknown to C
+function write_pcr_hash_collision(out_pcr_hash_collision::AbstractString, hash_collision_dict::Dict{Vector{UInt64}, Set{Tuple{LongDNA{4},LongDNA{4}}}})
+    open(out_pcr_hash_collision, "w+") do io
+        for s in values(hash_collision_dict)
+            if length(s) > 1
+                println(io, "\n", length(s))
+                for (s1,s2) in values(s)
+                    println(io, "\t", s1, "\t", s2)
+                end
+            end
+        end
     end
 end
+
 function alphabet_dna_2bit()
     ab = Vector{UInt8}(undef, 16)
     fill!(ab, 0x01)  # unknown to C
@@ -142,7 +144,7 @@ function hash_dna(s1::LongDNA{4}, s2::LongDNA{4})
     @inbounds dt_32[1] = UInt32(count_bits)
     @inbounds dt_32[2] = UInt32(count_c)
     @inbounds dt_32[3] = UInt32(count_t)
-    @inbounds dt_32[4] = UInt32(len1 + len2 << 16)
+    @inbounds dt_32[4] = UInt32(len1 + len2)
 
     dt_re = reinterpret(reshape, UInt8, data)
 
