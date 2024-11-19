@@ -178,10 +178,12 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
 
     #======= Hard clips =======#
     HardClipEndR1 = do_hard_clip_end_r1 ? quote
-        tail_trim!(r1::FqRecord, length(r1.seq) - $nclip_end_r1)
+        len_clip = max(0, length(r1.seq) - $nclip_end_r1)
+        tail_trim!(r1::FqRecord, len_clip)
     end : nothing
     HardClipEndR2 = do_hard_clip_end_r2 ? quote
-        tail_trim!(r2::FqRecord, length(r2.seq) - $nclip_end_r2)
+        len_clip = max(0, length(r1.seq) - $nclip_end_r2)
+        tail_trim!(r2::FqRecord, len_clip)
     end : nothing
 
     HardClipAfterR1 = do_hard_clip_after_r1 ? quote

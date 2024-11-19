@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.1.1
+
+- Fix: `-z NUM -Z NUM` error when length to trim < 0.
+
 ## v4.1.0
 
 - Change: --length-range default change from 50:500 to 30:999999.
