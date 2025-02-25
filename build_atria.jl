@@ -170,7 +170,10 @@ function copy_missing_lib()
     if occursin("Error during initialization of module", res)
         m = match(r"([^ \n]*\.(so|dylib|dll)([\.0-9]*)?): cannot open shared object file", res)
         if isnothing(m)
-            return nothing
+            m = match(r"([A-Za-z0-9\.\_\-]*\.(so|dylib|dll)([\.0-9]*)?)", res)
+            if isnothing(m)
+                return nothing
+            end
         end
         lib = joinpath(this_lib_dir, m.captures[1])
         dest_lib = joinpath(dest_lib_dir, m.captures[1])
