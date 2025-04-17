@@ -92,7 +92,10 @@ function load_fqs_threads!(
     n_r2 = append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
     # @info "load_fqs_threads! StringChunk2FqRecord! - stop - R2"
 
-    (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
+    if n_r1 == n_r2 == 0  # input r1.fastq and r2.fastq are empty (no reads)
+    elseif n_r1 == 0 || n_r2 == 0
+        throw(error("Numbers of reads in R1 and R2 not the same!"))
+    end
 
     return n_r1, n_r2, r1s, r2s, ncopyed
 end
@@ -280,7 +283,10 @@ function load_fqs_threads!(
 
     n_r2 = FqRecords.append_loop!(r2s, vr2s, tasks2; remove_first_n=n_remove_r2)
 
-    (n_r1 == 0 || n_r2 == 0) && throw(error("Numbers of reads in R1 and R2 not the same!"))
+    if n_r1 == n_r2 == 0  # input r1.fastq and r2.fastq are empty (no reads)
+    elseif n_r1 == 0 || n_r2 == 0
+        throw(error("Numbers of reads in R1 and R2 not the same!"))
+    end
 
     return n_r1, n_r2, r1s, r2s, in1bytes_nremain, in2bytes_nremain, ncopyed
 end
@@ -445,6 +451,10 @@ Return (chunk_size1, chunk_size2):Tuple{Int,Int}
 
     n_r1_read = n_r1 - n_r1_before
     n_r2_read = n_r2 - n_r2_before
+
+    if n_r1_read == n_r2_read == 0  # input r1.fastq and r2.fastq are empty (no reads)
+        return length(in1bytes), length(in2bytes)
+    end
 
     avg_length_r1 = length(in1bytes) / n_r1_read
     avg_length_r2 = length(in2bytes) / n_r2_read

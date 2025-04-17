@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.1.2
+
+- Fix: do not throw error if input paired end files are empty when doing `--detect-adapter`.
+
 ## v4.1.1
 
 - Fix: `-z NUM -Z NUM` error when length to trim < 0.
