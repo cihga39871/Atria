@@ -22,8 +22,6 @@
 - Feature: processing stats are recorded in the json file.
 - Fix: `polyX_tail_scan` algorithm now is more precise, and tailing Ns also count.
 
-
-
 ## v4.0.3
 
 - Fix: `--order` or `-O` option should accept multiple arguments.
