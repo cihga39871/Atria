@@ -422,7 +422,7 @@ Return chunk sizes of file 1 and 2, uncompressed sizes of file 1 and 2. If no co
 @inline function chunk_sizes(file1::String, file2::String, max_chunk_size::Int)
     filesize1, isgz1 = check_filesize(file1)
     filesize2, isgz2 = check_filesize(file2)
-    if isgz1 != isgz2
+    if isgz1 != isgz2 || filesize1 / filesize2 > 1.5 || filesize2 / filesize1 > 1.5
         # cannot determine gzip size using `file` for one sample.
         # just use size.
         filesize1 = filesize(file1)
@@ -465,7 +465,7 @@ Return (chunk_size1, chunk_size2):Tuple{Int,Int}
         avg_length_r2 = avg_length_r1 * default_chunk_size2 / default_chunk_size1
     end
 
-    if 0.975 < n_r1 / n_r2 < 1.025
+    if 0.995 < n_r1 / n_r2 < 1.005
         # do not care about n_r2 - n_r1
         if avg_length_r1 > avg_length_r2
             chunk_size2 = round(Int, (max_chunk_size/avg_length_r1) * avg_length_r2)
@@ -485,6 +485,9 @@ Return (chunk_size1, chunk_size2):Tuple{Int,Int}
     if chunk_size1 <= max_chunk_size
         # resize!(in1bytes, chunk_size1)
         # resize!(in2bytes, max_chunk_size)
+        if chunk_size1 < 0
+            chunk_size1 = round(Int, 0.1 * max_chunk_size)
+        end
         return chunk_size1, max_chunk_size
     end
 
@@ -492,6 +495,8 @@ Return (chunk_size1, chunk_size2):Tuple{Int,Int}
     chunk_size2 = round(Int, chunk_size2)
     if chunk_size2 > max_chunk_size
         @warn "Unexpected situation in get_ideal_inbyte_sizes!: chunk_size2 > max_chunk_size"
+    elseif chunk_size2 < 0
+        chunk_size2 = round(Int, 0.1 * max_chunk_size)
     end
     # resize!(in1bytes, max_chunk_size)
     # resize!(in2bytes, chunk_size2)
@@ -655,7 +660,7 @@ function read_chunks!(io::IO, inbytes::Vector{UInt8}, nremain::Integer, nthread:
         nbytes = length_inbytes
     else
         # move the unprocessed part of inbytes (which is in the end) to the front.
-        copyto!(inbytes, 1, inbytes, length_inbytes - nremain + 1, nremain)
+        nremain > 0 && copyto!(inbytes, 1, inbytes, length_inbytes - nremain + 1, nremain)
 
         if resize_before_read != length_inbytes
             if resize_before_read < nremain
@@ -813,13 +818,13 @@ end
 
 
 """
-    seeklastfq(inbytes::Vector{UInt8}, nbytes::UInt)
+    seeklastfq(inbytes::Vector{UInt8}, nbytes::Integer)
 
 Seek the index of the last fastq read.
 
 Caution: This function does not check whether the last fastq read is truncated or complete!
 """
-@inline function seeklastfq(inbytes::Vector{UInt8}, nbytes::UInt)::UInt
+@inline function seeklastfq(inbytes::Vector{UInt8}, nbytes::Integer)::UInt
     # idx_last_fq = nbytes
     i = nbytes
     while i > 0
@@ -853,7 +858,7 @@ Caution: This function does not check whether the last fastq read is truncated o
             i = i_last_but_1
         end
     end
-    i
+    UInt(i)
 end
 
 """

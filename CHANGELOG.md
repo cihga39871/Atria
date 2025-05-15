@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.1.4
+
+- Change: compressed file: better infer inbyte size when `file` does not output actual original file size.
+
 ## v4.1.3
 
 - Fix: when the paired end files are compressed, read chunks did not resize, which led to excessive copy, and copy number might accumulate round by round.
