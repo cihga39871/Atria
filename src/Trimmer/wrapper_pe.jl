@@ -582,13 +582,10 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
             n_r1_before = length(r1s) - n_reads
             n_r2_before = length(r2s) - n_reads
 
-            if typeof(io1) <: IOStream  # not compressed
+            if typeof(io1) <: IOStream  # not compressed                
                 length(in1bytes) == chunk_size1 || resize!(in1bytes, chunk_size1)
                 length(in2bytes) == chunk_size2 || resize!(in2bytes, chunk_size2)
                 (n_r1, n_r2, r1s, r2s, ncopied) = load_fqs_threads!(io1, io2, in1bytes, in2bytes, vr1s, vr2s, r1s, r2s, task_r1s_unbox, task_r2s_unbox; remove_first_n = n_reads, njobs = njobs, quality_offset = quality_offset)
-
-                # it only get the sizes, did not change the sizes. Size changing is done in the "Read" part.
-                chunk_size1, chunk_size2 = get_ideal_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
 
             else  # gziped
                 total_n_bytes_read1 += length(in1bytes)  # will read INT in this batch
@@ -606,6 +603,8 @@ function julia_wrapper_atria_pe(ARGS::Vector{String}; exit_after_help = true)
                     njobs = njobs
                 );
             end
+            # it only get the sizes, did not change the sizes. Size changing is done in the "Read" part.
+            chunk_size1, chunk_size2 = get_ideal_inbyte_sizes(in1bytes, in2bytes, n_r1, n_r2, n_r1_before, n_r2_before, max_chunk_size, chunk_size1, chunk_size2)
 
             n_reads = min(n_r1, n_r2)
             total_read_copied_in_loading += ncopied

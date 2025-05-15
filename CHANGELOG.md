@@ -5,6 +5,10 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.1.3
+
+- Fix: when the paired end files are compressed, read chunks did not resize, which led to excessive copy, and copy number might accumulate round by round.
+
 ## v4.1.2
 
 - Fix: do not throw error if input paired end files are empty when doing `--detect-adapter`.
@@ -84,13 +88,11 @@
 ## v3.1.0
 
 - New feature: `--detect-adapter` for adapter determination.
-
 - Fix: when input is an empty compressed fastq, atria exits with error because `read_chunks!(::IO, ...)` should return 4 elements, but returned 2.
 
 ## v3.0.3
 
 - Fix v3.0.2: `will_eof` should be true when unknown.
-
 - Do not resize chunk sizes before cycle 1 when inputs are compressed and cannot determine uncompressed sizes. Just assume data are not trimmed before.
 
 ## v3.0.2
@@ -100,9 +102,7 @@
 ## v3.0.1
 
 - Avoid to lock `IOStream` when write fastq in thread_output.jl: replace `write(::IOStream, ...)` with `write_no_lock(::IOStream, ...)`. It is slightly faster.
-
 - Speed optimization for consensus calling: overwrite `BioSequences.complement(::DNA)` (1.40X), and define `iscomplement(::DNA, ::DNA)` (1.79X).
-
 - Other minor parallel implementations.
 
 ## v3.0.0
@@ -112,7 +112,6 @@
 ## v2.1.2
 
 - Parameter optimization using `atria simulate`: --trim-score-pe 19->10, --tail-length 8->12.
-
 - Development of Atria simulation methods.
 
 ## v2.1.1
@@ -126,17 +125,11 @@
 ## v2.0.0
 
 - Supporting low-complexity filtration.
-
 - Supporting polyX tail trimming.
-
 - Supporting single-end fastq.
-
 - Supporting bzip2 compression/decompression.
-
 - Supporting non standardized gzip compression files.
-
 - Optimizing default parameters. (r1-r2-diff 0->0, trim-score-pe 8->10, score-diff removed, kmer-n-match 8->9)
-
 - Robustness optimization: the lower bound of match probability is set to 0.75 because match probability lower than 0.75 is outlier and affect trim score strongly.
 
 ## v1.1.1
@@ -146,19 +139,14 @@
 ## v1.1.0
 
 - Performance optimization: adapter and PE trimming: if no adapters were matched, the number of errors of PE match is loosen.
-
 - Performance optimization: consensus calling: new arg `--kmer-tolerance-consensus 2->10`; optimized arg `--min-ratio-mismatch 0.2->0.28`.
-
 - Speed optimization: check `overlap_score > 0` before computing score (`pe_consensus!`).
 
 ## v1.0.3
 
 - More detailed error output when encoding a non-nucleotide character (`throw_encode_error(...)`).
-
 - Following symbolic link before checking file size for non-Windows platforms (`check_filesize(::String)`).
-
 - When run in multi-file parallel mode, write stdout and stderr to a 'stdlog' file (`julia_wrapper_atria(...)`).
-
 - Add option `--check-identifier` to check whether the identifiers of r1 and r2 are the same.
 
 ## v1.0.2
