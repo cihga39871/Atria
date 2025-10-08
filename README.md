@@ -1,4 +1,6 @@
 # Atria
+![Atria Logo](https://github.com/cihga39871/Atria/raw/master/docs/logo.png)
+
 ![](https://img.shields.io/github/downloads/cihga39871/Atria/total)
  
 Atria is designed to trim adapters and low-quality bases of next-generation sequencing data. It infers the insert DNA precisely by integrating both adapter information and reverse-complementary properties of pair-end reads within a delicate decision tree. It can also remove duplicated sequences due to PCR amplification.
