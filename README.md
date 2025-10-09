@@ -1,4 +1,6 @@
-![Atria Logo](https://github.com/cihga39871/Atria/raw/master/docs/logo.png)
+<p align="center">
+    <img src="docs/logo.png" alt="Atria Logo" width="210" height="auto">
+</p>
 
 # Atria
 
