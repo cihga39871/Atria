@@ -5,6 +5,12 @@
 - Feature: multiple primer trimming.
 - Feature: UMI trimming.
 
+## v4.1.5
+
+- Fix: cannot find unbundled stdlib when starting Atria. Cause: the bug is in PackageCompiler’s stdlib-to-library mapping during bundling, not in Atria. I forked the package and made a focused fix in `bundle_julia_libraries` (new branch v2.1.25-dev) so stdlib names like SuiteSparse correctly resolve to `SuiteSparse_jll` mappings and copy libcholmod into the app bundle. (#19)
+
+mpiler  (#19)
+
 ## v4.1.4
 
 - Change: compressed file: better infer inbyte size when `file` does not output actual original file size.
